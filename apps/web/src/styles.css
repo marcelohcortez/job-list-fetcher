@@ -1,0 +1,352 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7f9;
+  --fg: #1c2333;
+  --muted: #5b6577;
+  --card: #ffffff;
+  --border: #e2e5ea;
+  --accent: #2563eb;
+  --accent-ink: #ffffff;
+  --danger: #b3261e;
+  --radius: 10px;
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    Roboto,
+    'Helvetica Neue',
+    sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f141f;
+    --fg: #e7ebf2;
+    --muted: #98a2b3;
+    --card: #1a2231;
+    --border: #2a3448;
+    --accent: #3b82f6;
+    --danger: #f87171;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.app {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 16px 0 12px;
+  background: var(--bg);
+}
+
+.header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.refresh {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.refresh:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.header-bottom {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.header-bottom input {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--fg);
+}
+
+.count,
+.summary,
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.summary {
+  margin: 8px 0 0;
+}
+
+.error {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin: 8px 0 16px;
+  font-size: 14px;
+}
+
+.jobs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.job {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.job-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.job-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.status {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #2f9e44;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.meta .company {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.source {
+  text-transform: capitalize;
+}
+
+.description {
+  margin: 10px 0 8px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.salary {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.links {
+  display: flex;
+  gap: 14px;
+}
+
+.links a,
+.links a:visited {
+  color: var(--accent);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.links a:hover {
+  text-decoration: underline;
+}
+
+.marks {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.mark {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.mark:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  padding: 8px 14px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--accent);
+}
+
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.cv-upload {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.cv-upload h2 {
+  font-size: 16px;
+  margin: 0 0 6px;
+}
+
+.cv-upload-info p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.cv-upload-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.cv-upload-controls input[type='file'] {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.match {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin: 10px 0;
+  font-size: 13px;
+}
+
+.match-score {
+  font-weight: 700;
+}
+
+.match-counts {
+  opacity: 0.85;
+}
+
+.chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chips.terms {
+  margin-top: 4px;
+}
+
+.chip {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--accent-ink);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.chip.term {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.mark.active.applied {
+  background: #2f9e44;
+  border-color: #2f9e44;
+  color: #fff;
+}
+
+.mark.active.not-interested {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.mark:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

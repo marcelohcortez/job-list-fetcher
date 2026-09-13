@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@job-fetcher/domain": ["packages/domain/src/index.ts"],
+      "@job-fetcher/domain/*": ["packages/domain/src/*"],
+      "@job-fetcher/source-adapters": ["packages/source-adapters/src/index.ts"],
+      "@job-fetcher/source-adapters/*": ["packages/source-adapters/src/*"],
+      "@job-fetcher/database": ["packages/database/src/index.ts"],
+      "@job-fetcher/database/*": ["packages/database/src/*"],
+      "@job-fetcher/config": ["packages/config/src/index.ts"],
+      "@job-fetcher/config/*": ["packages/config/src/*"],
+      "@job-fetcher/test-utils": ["packages/test-utils/src/index.ts"],
+      "@job-fetcher/test-utils/*": ["packages/test-utils/src/*"],
+      "@job-fetcher/cv-match": ["packages/cv-match/src/index.ts"],
+      "@job-fetcher/cv-match/*": ["packages/cv-match/src/*"]
+    }
+  }
+}

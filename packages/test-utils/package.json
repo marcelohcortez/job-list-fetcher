@@ -1,0 +1,10 @@
+{
+  "name": "@job-fetcher/test-utils",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@job-fetcher/domain": "1.0.0"
+  }
+}
