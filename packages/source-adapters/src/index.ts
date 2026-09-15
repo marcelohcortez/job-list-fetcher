@@ -1,5 +1,8 @@
 export type { SourceAdapter, AdapterOptions } from './base';
-export { CinodeAdapter, CINODE_LOCATIONS } from './cinode';
+export { CinodeAdapter } from './cinode';
+export { CinodeMarketAdapter } from './cinode-market';
+export type { CinodeMarketAdapterOptions } from './cinode-market';
+export type { CinodeCredentials } from './cinode';
 export type { CinodeAdapterOptions } from './cinode';
 export { TheirStackAdapter, THEIRSTACK_DEFAULT_LOCATION } from './theirstack';
 export type { TheirStackAdapterOptions } from './theirstack';

@@ -60,8 +60,13 @@
 
 ### Source Adapters
 
-11. **Cinode adapter (MVP priority)**
-    - Query for `Göthenburg` AND `Gothenburg`
+11. **Cinode adapters (MVP priority)** — done; see `Docs/adr/0003-cinode-access-strategy.md`
+    - Cinode has no job-ad endpoint and no location query parameter, so location is
+      filtered in the domain layer like every other source
+    - `cinode`: exchange credentials for a bearer token at `GET /token`, then read the
+      network-requests-received and project-roles feeds; skip a feed that is not entitled
+    - `cinode-market`: public board at market.cinode.com, no credentials, paginated with
+      the site's own `X-Next-Cursor` contract
     - Respect rate limits, pagination, and API authentication
     - Map raw response to `SourceRecord` schema
     - Store raw payload alongside normalized data

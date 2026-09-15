@@ -4,12 +4,12 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173,
+    port: 4001,
     proxy: {
-      '/jobs': 'http://localhost:3000',
-      '/ingestion': 'http://localhost:3000',
-      '/cv': 'http://localhost:3000',
-      '/health': 'http://localhost:3000',
+      '/jobs': 'http://localhost:4000',
+      '/ingestion': 'http://localhost:4000',
+      '/cv': 'http://localhost:4000',
+      '/health': 'http://localhost:4000',
     },
   },
 });

@@ -2,14 +2,17 @@ services:
   app:
     build: .
     ports:
-      - '3000:3000'
+      - '4000:4000'
     environment:
       - NODE_ENV=development
+      - PORT=4000
       - DATABASE_PATH=/data/jobs.db
       - JOBTECH_QUERIES=${JOBTECH_QUERIES:-}
       - GREENHOUSE_BOARDS=${GREENHOUSE_BOARDS:-}
       - LEVER_BOARDS=${LEVER_BOARDS:-}
-      - CINODE_API_KEY=${CINODE_API_KEY:-}
+      - CINODE_ACCESS_ID=${CINODE_ACCESS_ID:-}
+      - CINODE_ACCESS_SECRET=${CINODE_ACCESS_SECRET:-}
+      - CINODE_COMPANY_ID=${CINODE_COMPANY_ID:-}
       - THEIRSTACK_API_KEY=${THEIRSTACK_API_KEY:-}
     volumes:
       - app_data:/data

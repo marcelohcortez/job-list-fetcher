@@ -9,7 +9,7 @@ This platform aggregates and normalizes job openings from multiple sources (JobS
 ### Language
 
 **JobSource**: A provider of streaming or periodic job openings (e.g., Cinode, public ATS sites, job search engines). Each source has a unique name and an API connector to retrieve raw job data.
-_Includes_: Cinode, Greenhouse, Lever
+_Includes_: JobTech Dev, Greenhouse, Lever, Cinode Market, Cinode API, TheirStack
 _Avoid_: JobSpipe, (unless specified as a source)
 
 **JobOpening**: The canonical, normalized entity representing one specific job opportunity. It aggregates data from one or more JobSources and can be filtered to match a user's declared interests.

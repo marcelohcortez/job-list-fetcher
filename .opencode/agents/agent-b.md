@@ -39,7 +39,8 @@ Build the core business logic layer: domain model types, source adapters, dedupl
 - `packages/domain/src/location-matcher.ts` — Gothenburg/Göteborg normalization + matching
 - `packages/domain/src/deadline-filter.ts` — Deadline/status eligibility logic
 - `packages/domain/src/deduplication.ts` — Multi-stage deduplication engine
-- `packages/source-adapters/src/cinode.ts` — Cinode API adapter
+- `packages/source-adapters/src/cinode.ts` — Cinode private API adapter
+- `packages/source-adapters/src/cinode-market.ts` — public Cinode Market board adapter
 - `packages/source-adapters/src/theirstack.ts` — TheirStack API adapter
 - `packages/database/src/index.ts` — Repository layer for persistence
 - `apps/api/src/ingestion-runner.ts` — Orchestrator and ingestion run tracking
@@ -48,7 +49,7 @@ Build the core business logic layer: domain model types, source adapters, dedupl
 
 ## Acceptance Criteria
 
-- Cinode adapter fetches and maps at least one job opening for both `Gothenburg` and `Göteborg`.
+- A Cinode adapter maps at least one opening, and `Gothenburg`/`Göteborg` listings survive the domain-layer location filter (the Cinode API has no location parameter).
 - Deduplication correctly links identical jobs from two sources into one `JobOpening`.
 - Timezone boundary tests pass: deadline exactly 7 days past is INCLUDED; 8 days past is EXCLUDED.
 - Repeated ingestion of the same source data produces no duplicate `JobOpening` records.

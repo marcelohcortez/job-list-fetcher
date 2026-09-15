@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { CinodeAdapter, CINODE_LOCATIONS } from '../src/cinode';
+import { isJobInScope } from '@job-fetcher/domain';
+import { CinodeAdapter } from '../src/cinode';
 import { TheirStackAdapter } from '../src/theirstack';
 import {
   JobTechDevAdapter,
@@ -15,57 +16,250 @@ function jsonResponse(body: unknown): Response {
   });
 }
 
-const sampleJob = {
-  id: 'cinode-123',
-  title: 'Software Engineer',
-  company: 'Tech Corp',
-  location: 'Gothenburg',
-  description: 'Desc',
-  url: 'https://cinode.com/jobs/123',
-  deadline: '2026-09-30T00:00:00.000Z',
-  status: 'active',
+const CREDS = { accessId: 'id', accessSecret: 'secret' };
+
+const sampleProject = {
+  id: 7,
+  seoId: 'acme-platform',
+  title: 'Platform modernisation',
+  description: 'Project description',
+  customer: { name: 'Acme Corp' },
+  currentState: 0,
+  estimatedCloseDate: '2026-09-30T00:00:00.000Z',
+  createdDateTime: '2026-09-01T00:00:00.000Z',
+  assignments: [
+    {
+      id: 42,
+      seoId: 'senior-software-engineer',
+      title: 'Senior Software Engineer',
+      description: 'Role description',
+      startDate: '2026-10-01T00:00:00.000Z',
+    },
+  ],
 };
 
+/** Serves the token, search, project and role-location calls in that order. */
+function cinodeFetcher(overrides: Record<string, unknown> = {}) {
+  const urls: string[] = [];
+  const fetcher = vi.fn(async (url: string, _init?: RequestInit) => {
+    urls.push(url);
+    if (url.endsWith('/token')) return jsonResponse({ access_token: 'jwt' });
+    if (url.endsWith('/network/requests/received')) {
+      return jsonResponse({ requests: [], totalItems: 0 });
+    }
+    if (url.endsWith('/projects/search')) {
+      return jsonResponse({ result: [{ id: 7 }], totalItems: 1 });
+    }
+    if (url.endsWith('/location')) return jsonResponse({ city: 'Göteborg' });
+    return jsonResponse({ ...sampleProject, ...overrides });
+  });
+  return { fetcher, urls };
+}
+
+const sampleRequest = {
+  requestId: 314,
+  requestSenderCompanyName: 'Partner AB',
+  title: 'Senior Data Engineer / ML Engineer - Databricks (Remote first)',
+  description: 'Databricks platform work.',
+  createdDateTime: '2026-09-05T00:00:00.000Z',
+  deadline: '2026-09-30T00:00:00.000Z',
+  status: 0,
+  isRemote: true,
+  location: null,
+};
+
+/** Answers the token call, then the received-requests feed; projects are denied. */
+function networkFetcher(overrides: Record<string, unknown> = {}) {
+  return vi.fn(async (url: string, _init?: RequestInit) => {
+    if (url.endsWith('/token')) return jsonResponse({ access_token: 'jwt' });
+    if (url.endsWith('/network/requests/received')) {
+      return jsonResponse({
+        requests: [{ ...sampleRequest, ...overrides }],
+        totalItems: 1,
+      });
+    }
+    return new Response('', { status: 403 });
+  });
+}
+
 describe('CinodeAdapter', () => {
-  it('queries both Göteborg and Gothenburg', async () => {
-    const urls: string[] = [];
-    const fetcher = vi.fn(async (url: string) => {
-      urls.push(url);
-      return jsonResponse([sampleJob]);
-    });
-    const adapter = new CinodeAdapter('key', { rateLimitMs: 0, fetcher });
-    await adapter.fetchJobs();
-    expect(CINODE_LOCATIONS).toEqual(['Göteborg', 'Gothenburg']);
-    expect(urls).toHaveLength(2);
+  it('exchanges credentials for a bearer token before querying', async () => {
+    const { fetcher, urls } = cinodeFetcher();
+    await new CinodeAdapter(CREDS, {
+      rateLimitMs: 0,
+      companyId: '1',
+      fetcher,
+    }).fetchJobs();
+
+    expect(urls[0]).toBe('https://api.cinode.com/token');
+    const tokenInit = fetcher.mock.calls[0][1] as RequestInit;
+    const basic = Buffer.from('id:secret').toString('base64');
+    expect((tokenInit.headers as Record<string, string>).Authorization).toBe(
+      `Basic ${basic}`,
+    );
+    const searchInit = fetcher.mock.calls[1][1] as RequestInit;
+    expect((searchInit.headers as Record<string, string>).Authorization).toBe(
+      'Bearer jwt',
+    );
   });
 
-  it('maps raw jobs to validated SourceRecords', async () => {
-    const fetcher = vi.fn(async () => jsonResponse([sampleJob]));
-    const adapter = new CinodeAdapter('key', { rateLimitMs: 0, fetcher });
-    const records = await adapter.fetchJobs();
+  it('maps each project role to a validated SourceRecord', async () => {
+    const { fetcher } = cinodeFetcher();
+    const records = await new CinodeAdapter(CREDS, {
+      rateLimitMs: 0,
+      companyId: '1',
+      fetcher,
+    }).fetchJobs();
+
+    expect(records).toHaveLength(1);
     expect(records[0]).toMatchObject({
       sourceName: 'cinode',
-      sourceJobId: 'cinode-123',
-      title: 'Software Engineer',
-      url: 'https://cinode.com/jobs/123',
+      sourceJobId: '7-42',
+      title: 'Senior Software Engineer',
+      company: 'Acme Corp',
+      location: 'Göteborg',
+      status: 'active',
+      url: 'https://app.cinode.com/projects/acme-platform/roles/senior-software-engineer',
     });
-    expect(records[0].rawPayload).toEqual(sampleJob);
+    expect(records[0].deadline).toEqual(new Date('2026-09-30T00:00:00.000Z'));
+  });
+
+  it('marks roles on non-open projects as closed', async () => {
+    const { fetcher } = cinodeFetcher({ currentState: 40 });
+    const records = await new CinodeAdapter(CREDS, {
+      rateLimitMs: 0,
+      companyId: '1',
+      fetcher,
+    }).fetchJobs();
+    expect(records[0].status).toBe('closed');
+  });
+
+  it('keeps the role when it has no location on file', async () => {
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.endsWith('/token')) return jsonResponse({ access_token: 'jwt' });
+      if (url.endsWith('/projects/search')) {
+        return jsonResponse({ result: [{ id: 7 }], totalItems: 1 });
+      }
+      if (url.endsWith('/location')) return new Response('', { status: 404 });
+      return jsonResponse(sampleProject);
+    });
+    const records = await new CinodeAdapter(CREDS, {
+      rateLimitMs: 0,
+      companyId: '1',
+      fetcher,
+    }).fetchJobs();
+    expect(records[0].location).toBe('');
+  });
+
+  it('ingests received network requests as openings', async () => {
+    const records = await new CinodeAdapter(CREDS, {
+      rateLimitMs: 0,
+      companyId: '1',
+      fetcher: networkFetcher(),
+    }).fetchJobs();
+
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      sourceName: 'cinode',
+      sourceJobId: 'request-314',
+      title: 'Senior Data Engineer / ML Engineer - Databricks (Remote first)',
+      company: 'Partner AB',
+      status: 'active',
+    });
+    expect(records[0].deadline).toEqual(new Date('2026-09-30T00:00:00.000Z'));
+  });
+
+  it('labels an address-less remote request as Remote so it stays in scope', async () => {
+    const records = await new CinodeAdapter(CREDS, {
+      rateLimitMs: 0,
+      companyId: '1',
+      fetcher: networkFetcher(),
+    }).fetchJobs();
+    expect(records[0].location).toBe('Remote');
+    expect(isJobInScope(records[0].title, records[0].location)).toBe(true);
+  });
+
+  it('combines a city with the remote flag', async () => {
+    const records = await new CinodeAdapter(CREDS, {
+      rateLimitMs: 0,
+      companyId: '1',
+      fetcher: networkFetcher({ location: { city: 'Göteborg' } }),
+    }).fetchJobs();
+    expect(records[0].location).toBe('Göteborg (Remote)');
+  });
+
+  it('marks revoked and closed requests as closed', async () => {
+    const records = await new CinodeAdapter(CREDS, {
+      rateLimitMs: 0,
+      companyId: '1',
+      fetcher: networkFetcher({ status: 20 }),
+    }).fetchJobs();
+    expect(records[0].status).toBe('closed');
+  });
+
+  it('keeps one feed when the other is forbidden', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const records = await new CinodeAdapter(CREDS, {
+      rateLimitMs: 0,
+      companyId: '1',
+      fetcher: networkFetcher(),
+    }).fetchJobs();
+    expect(records).toHaveLength(1);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Cinode project roles unavailable'),
+    );
+    warn.mockRestore();
+  });
+
+  it('fails the run when every feed is forbidden', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.endsWith('/token')) return jsonResponse({ access_token: 'jwt' });
+      return new Response('', { status: 403 });
+    });
+    await expect(
+      new CinodeAdapter(CREDS, {
+        rateLimitMs: 0,
+        companyId: '1',
+        fetcher,
+      }).fetchJobs(),
+    ).rejects.toThrow(/denied access to every feed/);
+    warn.mockRestore();
+  });
+
+  it('reports a failed token exchange', async () => {
+    const fetcher = vi.fn(async () => new Response('nope', { status: 401 }));
+    await expect(
+      new CinodeAdapter(CREDS, {
+        rateLimitMs: 0,
+        companyId: '1',
+        fetcher,
+      }).fetchJobs(),
+    ).rejects.toThrow(/token request failed \(401\)/);
   });
 
   it('throws on non-OK responses', async () => {
-    const fetcher = vi.fn(async () => new Response('err', { status: 429 }));
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.endsWith('/token')) return jsonResponse({ access_token: 'jwt' });
+      return new Response('err', { status: 429 });
+    });
     await expect(
-      new CinodeAdapter('key', { rateLimitMs: 0, fetcher }).fetchJobs(),
+      new CinodeAdapter(CREDS, {
+        rateLimitMs: 0,
+        companyId: '1',
+        fetcher,
+      }).fetchJobs(),
     ).rejects.toThrow(/429/);
   });
 
-  it('rejects records that fail boundary validation', async () => {
-    const fetcher = vi.fn(async () =>
-      jsonResponse([{ ...sampleJob, url: 'not-a-url' }]),
-    );
-    await expect(
-      new CinodeAdapter('key', { rateLimitMs: 0, fetcher }).fetchJobs(),
-    ).rejects.toThrow(/Invalid/);
+  it('skips entirely without a companyId', async () => {
+    const fetcher = vi.fn(async () => jsonResponse({}));
+    const records = await new CinodeAdapter(CREDS, {
+      rateLimitMs: 0,
+      fetcher,
+    }).fetchJobs();
+    expect(records).toEqual([]);
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });
 

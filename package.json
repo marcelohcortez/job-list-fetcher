@@ -14,7 +14,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "dev": "npm run dev --workspace @job-fetcher/api",
-    "web": "npm run dev --workspace @job-fetcher/web",
+    "web": "npm run dev --workspace @job-fetcher/web -- --port 4001",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down"
   },

@@ -58,6 +58,10 @@ For Cinode, retrieve job openings matching either location term:
 - `Göteborg`
 - `Gothenburg`
 
+> **Implementation note (2026-09-14):** the Cinode API accepts no location filter, so
+> both terms are matched in the domain layer after ingestion, exactly as for every other
+> source. See `Docs/adr/0003-cinode-access-strategy.md`.
+
 Only include an opening when at least one of these conditions is true:
 
 - It is marked as active/open by the source.
@@ -273,6 +277,13 @@ Never silently merge uncertain matches. Preserve both source records and flag th
 ### 8.1 Cinode — MVP source
 
 Use the documented Cinode API. Implement a dedicated `CinodeSourceAdapter`.
+
+> **Implementation note (2026-09-14):** the documented API has no job-ad endpoint, and a
+> default API user is entitled to nothing (valid token, 403 on every company resource).
+> Cinode is therefore served by two adapters — the private API (`cinode`, dormant until
+> credentials and entitlement exist) and the public market board (`cinode-market`, on by
+> default, no credentials). The rationale, the endpoints and the trade-offs are recorded
+> in `Docs/adr/0003-cinode-access-strategy.md`.
 
 Required behavior:
 
@@ -632,7 +643,11 @@ Use these as starting points for implementation and evaluation. Verify documenta
 
 ## 16. Open Questions to Resolve Before Implementation
 
-1. Does Cinode provide public or authorized access to all required job-listing data, including status and deadlines?
+1. ~~Does Cinode provide public or authorized access to all required job-listing data, including status and deadlines?~~
+   **Answered 2026-09-14 — partly.** Cinode has no job-ad endpoint; openings exist as project
+   roles or partner requests. Status and deadlines are available on both private feeds and on
+   the public market board. The private API additionally requires paid modules and access
+   levels a default API user does not have. See `Docs/adr/0003-cinode-access-strategy.md`.
 2. Is this a personal local tool, an internal Devies tool, or a public/multi-user product? This affects authentication, privacy, deployment, and legal requirements.
 3. Which sources have permitted APIs and viable Gothenburg coverage?
 4. Is the desired schedule exactly once per day, or should it run more often for fresh postings?

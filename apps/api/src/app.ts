@@ -6,6 +6,7 @@ import type { JobDb } from '@job-fetcher/database';
 import { jobsRoutes } from './routes/jobs';
 import { ingestionRoutes } from './routes/ingestion';
 import { cvRoutes } from './routes/cv';
+import { cvsRoutes } from './routes/cvs';
 
 export function createApp(db: Kysely<JobDb>, adapters: SourceAdapter[]) {
   const app = new Hono();
@@ -15,6 +16,7 @@ export function createApp(db: Kysely<JobDb>, adapters: SourceAdapter[]) {
   app.route('/jobs', jobsRoutes(db));
   app.route('/ingestion', ingestionRoutes(db, adapters));
   app.route('/cv', cvRoutes(db));
+  app.route('/cvs', cvsRoutes(db));
 
   return app;
 }

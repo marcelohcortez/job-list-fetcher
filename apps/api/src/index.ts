@@ -6,6 +6,8 @@ import {
   JobTechDevAdapter,
   LeverAdapter,
   TheirStackAdapter,
+  CinodeAdapter,
+  CinodeMarketAdapter,
   type SourceAdapter,
 } from '@job-fetcher/source-adapters';
 import { createApp } from './app';
@@ -41,6 +43,37 @@ function main() {
   if (env.THEIRSTACK_API_KEY) {
     adapters.push(new TheirStackAdapter(env.THEIRSTACK_API_KEY));
   }
+  if (
+    env.CINODE_ACCESS_ID &&
+    env.CINODE_ACCESS_SECRET &&
+    env.CINODE_COMPANY_ID
+  ) {
+    adapters.push(
+      new CinodeAdapter(
+        {
+          accessId: env.CINODE_ACCESS_ID,
+          accessSecret: env.CINODE_ACCESS_SECRET,
+        },
+        { companyId: env.CINODE_COMPANY_ID },
+      ),
+    );
+  } else if (
+    env.CINODE_ACCESS_ID ||
+    env.CINODE_ACCESS_SECRET ||
+    env.CINODE_COMPANY_ID
+  ) {
+    console.warn(
+      'Cinode adapter disabled: CINODE_ACCESS_ID, CINODE_ACCESS_SECRET and CINODE_COMPANY_ID are all required.',
+    );
+  } else {
+    console.warn('Cinode adapter disabled: no credentials in the environment.');
+  }
+
+  if (env.CINODE_MARKET_ENABLED) {
+    adapters.push(new CinodeMarketAdapter());
+  }
+
+  console.log(`Active sources: ${adapters.map((a) => a.name).join(', ')}`);
 
   const app = createApp(db, adapters);
 
