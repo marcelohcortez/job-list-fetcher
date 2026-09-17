@@ -1,5 +1,11 @@
 # Local HR Ingestion Pipeline Specification (Ollama + Chroma)
 
+> **Shipped implementation note**: this pipeline was implemented as a native TypeScript port (`packages/semantic-match`), not the Python blueprint below — see [ADR 0004](adr/0004-semantic-matching-pipeline.md) for why, and what changed (shared job/CV schema, anchor-string symmetry, embed-at-ingestion-time). This document remains the original design reference for the sanitize → anchor → embed → store shape the TS code follows.
+>
+> **Update (ADR 0009)**: the match score is no longer the raw cosine similarity of the anchor-document embeddings described below. Whole-document similarity alone let two roles sharing generic domain vocabulary score deceptively high despite disjoint actual skill requirements. `required_skills` (§3 below) is now also resolved into a canonical, language-agnostic `skills` vocabulary and compared explicitly; the anchor-document similarity is retained but blended with, and by default weighted below, that skill-coverage score. See [ADR 0009](adr/0009-skill-taxonomy-and-weighted-matching.md).
+>
+> **Update (ADR 0010)**: `required_skills`/`soft_skills` (§3 below) must now be extracted with an explicit hard-vs-soft distinction — the JSON schema originally sent to the model carried no field descriptions at all, so the split was unreliable in practice. A separate, hand-curated `skill_relations` table gives partial/full skill-coverage credit for related-but-not-identical skills (e.g. "Stakeholder Management" satisfying "Customer-facing Experience"), replacing three computed (embedding-similarity-based) attempts at the same problem that were tried and reverted. See [ADR 0010](adr/0010-curated-skill-relations-and-umbrella-categories.md) and [Docs/matching_pipeline.md](matching_pipeline.md) for the current end-to-end pipeline.
+
 This document provides technical instructions and copy-pasteable boilerplate for implementing a 100% local, high-accuracy job opening sanitization and vectorization pipeline. Pass this file directly to an AI engineer or assistant for immediate implementation.
 
 ---

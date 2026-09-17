@@ -1,0 +1,40 @@
+# ADR 0009: Canonical Skill Taxonomy + Weighted Match Scoring
+
+**Status**: Accepted
+**Date**: 2026-09-15
+**Author**: Claude Sonnet 5
+
+Match scores were reading as inflated and untrustworthy — a candidate's CV scored 80% against a DevSecOps opening despite having none of its required security skills. This ADR replaces "raw cosine similarity of one whole-document embedding" with an explicit, literal skill-overlap signal blended with that similarity, and introduces a canonical skill vocabulary that normalizes spelling/formatting variants and cross-language (English/Swedish) skill names to the same underlying skill.
+
+**Context**:
+
+1. [ADR 0004](0004-semantic-matching-pipeline.md) scores a match as the cosine similarity between one embedding of the job's anchor document (title + skills + soft skills + experience + responsibilities, all flattened into one paragraph, see `buildAnchorDocument`) and one embedding of the candidate's anchor document, built the same way.
+2. That single vector is dominated by whatever text is longest and most repetitive — generic domain/role vocabulary ("IT", "engineer", "cloud", "team", "agile") — not by the specific required skills, which are a short list buried inside the paragraph. Two IT roles in the same broad domain but requiring almost disjoint skill sets (e.g. DevSecOps vs. a generalist backend role) can land close together in vector space purely on shared boilerplate.
+3. `SanitizedProfile.requiredSkills` (`packages/semantic-match/src/schema.ts`) already extracts a clean list of skill strings per job/CV, but nothing downstream used it as a discrete signal — it only ever fed into the one flattened anchor string.
+4. Skill strings vary in ways that break naive exact-match comparison: formatting (`frontend` / `front-end` / `front end`), synonyms/abbreviations (`k8s` / `kubernetes`, `js` / `javascript`), and language (a Swedish job ad's `frontend-utveckling` vs. an English CV's `frontend`).
+
+**Decision**:
+
+1. **Introduce a canonical `skills` vocabulary**, structurally identical to the `target_role_phrases` pattern from [ADR 0006](0006-vector-role-scope-and-candidate-dedup.md): a `skills` SQLite table (id, canonical label, normalized label) plus a `skills` Chroma collection holding one embedding per canonical skill (migration `007-skill-taxonomy`). `job_required_skills` and `candidate_skills` are pure junction tables linking a job opening / candidate to the skill ids it was resolved to; both are rebuilt in full every time that job/candidate is (re-)sanitized.
+2. **Resolve each raw extracted skill string to a canonical skill id in three cheap-to-expensive steps** (`apps/api/src/skill-taxonomy.ts`, `createSkillCanonicalizer`, called right after `processJobOpening`/`processCandidate`):
+   - Formatting-normalize the raw string (`normalizeSkillLabel` in `packages/domain`: lowercase, strip accents/punctuation, collapse whitespace) — this alone collapses `Front-End`/`front end`/`FRONTEND` for free, no embedding call.
+   - Exact lookup of the normalized string against the `skills` table.
+   - On a miss, embed the normalized string and query the `skills` Chroma collection for the nearest existing canonical skill; a hit at or above `SKILL_MATCH_MIN_SIMILARITY` (default `0.82`) reuses that skill's id — this is what folds in true synonyms, abbreviations, and cross-language variants (a multilingual embedding model, e.g. `nomic-embed-text`, places semantically equivalent English/Swedish terms close together) without a translation step or a hand-maintained synonym table.
+   - Otherwise, mint a new canonical skill row and embedding — the vocabulary grows the same self-correcting way `target_role_phrases` does.
+3. **Blend explicit skill coverage into the match score, replacing raw similarity as the primary signal.** `GET /matches` now computes, per job/candidate pair: `skillCoverage = matchedRequiredSkills / totalRequiredSkills` (using the canonical skill id sets from the two junction tables) and blends it with the existing whole-document cosine similarity: `score = SKILL_OVERLAP_WEIGHT * skillCoverage + (1 - SKILL_OVERLAP_WEIGHT) * semanticSimilarity`, default weight `0.6`. A job with no extracted required skills (LLM failure, or none found) falls back to pure semantic similarity rather than treating a missing signal as zero coverage. The response now carries `similarity` (the blended score used for ranking/filtering), plus `semanticSimilarity`, `skillCoverage`, `matchedSkillCount`, and `requiredSkillCount` so the breakdown is visible, not just a single opaque percentage — the Matches tab shows a `matched/required skills` count alongside the score.
+
+**Considered Options**:
+
+- **Keep one blended anchor-document embedding but reweight the anchor template** (e.g. repeat the skills section to bias the vector toward it). Rejected — still an indirect, un-auditable signal; no way to guarantee a missing required skill actually suppresses the score rather than just nudging it, and no way to show the user *why* a score is what it is.
+- **Hard-maintain a synonym dictionary** (`js` → `javascript`, `frontend-utveckling` → `frontend`, ...) instead of embedding-based fallback. Rejected for the same reason ADR 0006 rejected hand-maintaining `TARGET_ROLES`: it's an unbounded, ever-growing list across two languages and every tool/framework alias, and it goes stale the moment a new spelling appears.
+- **Translate all skill labels to English at extraction time** (prompt the sanitizer LLM to normalize/translate). Considered as a cheaper alternative to embedding-based cross-language matching, but rejected for now — it couples correctness to the chat model's translation quality on every single sanitize call, with no fallback if it mistranslates a technical term. The embedding fallback degrades more gracefully (worst case: a near-duplicate skill is minted instead of reused, which only costs a slightly noisier vocabulary, not a wrong match). Left as a future option to combine with this if embedding-based folding proves too permissive/restrictive in practice.
+- **Jaccard over the full skill sets (required ∪ candidate) instead of required-skill coverage.** Rejected — a candidate with many extra, irrelevant skills would dilute their score on a job they're otherwise fully qualified for; what matters for "does this candidate fit this opening" is whether the job's requirements are met, not how large the candidate's skill set is.
+
+**Consequences**:
+
+- **Pro**: A missing required skill now visibly and directly caps the score instead of being averaged away by shared boilerplate text — the DevSecOps-CV-scores-80% failure mode this ADR was written to fix is structurally addressed, not threshold-tuned around.
+- **Pro**: Skill resolution reuses the exact injected-interface pattern (`VectorStore`, `Embed`) every other semantic feature in this codebase already follows, so it's unit-testable without live Ollama/Chroma (`apps/api/src/__tests__/skill-taxonomy.test.ts`).
+- **Pro**: The vocabulary is language-agnostic by construction — it does not require detecting or declaring a document's language, only that the embedding model places equivalent-meaning terms in nearby vectors.
+- **Con**: Every extracted skill string now costs a DB lookup and, on a miss, an embed + vector query — sanitizing a job/CV with many required skills makes more Ollama/Chroma round trips than before. Acceptable at this platform's local/single-user scale; would need batching if skill lists grow large or ingestion volume grows.
+- **Con**: `SKILL_MATCH_MIN_SIMILARITY` (like `ROLE_MATCH_MIN_SIMILARITY` before it) is a starting value, not a tuned one — too low folds unrelated skills together, too high mints near-duplicate canonical skills for trivial variants the exact-normalize step didn't catch.
+- **Con**: Jobs/candidates sanitized before this change have no rows in `job_required_skills`/`candidate_skills` until they're re-sanitized — their matches fall back to pure semantic similarity (the same behavior as a zero-required-skills job) until then. There is no backfill sweep.

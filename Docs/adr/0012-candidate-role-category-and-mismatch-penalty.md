@@ -1,0 +1,36 @@
+# ADR 0012: Candidate Role Category + Mismatch/No-Skills Penalties
+
+**Status**: Accepted
+**Date**: 2026-09-16
+**Author**: Claude Sonnet 5
+
+A Designer's CV scored 75% against Canonical's "Product Manager - AI" opening. Neither signal in the match score (ADR 0009's skill coverage, or whole-document semantic similarity) ever checks what *kind* of role the job and the candidate are for - this ADR adds that check as a third, independent discount on top of the existing blend.
+
+**Context**:
+
+1. `TARGET_ROLES` (`packages/domain/src/target-roles.ts`) gates which *job* titles are ingested at all, but has no analogue on the *candidate* side - a CV is accepted regardless of what role it's for, and nothing about its title is ever compared against the job's.
+2. `blendScore` (`apps/api/src/routes/matches.ts`) blends required-skill coverage with whole-document semantic similarity. When a job has few or no discrete required skills - the Canonical posting was this kind of ad - the score leans on, or falls back entirely to, semantic similarity. Generic vocabulary shared across unrelated roles ("stakeholder," "product," "roadmap," "team," "user") sits close together in embedding space regardless of role, which is exactly the failure mode ADR 0009 documented for skills and never addressed at the role level.
+3. `skill_relations` (ADR 0010) can also over-credit across roles if a curated pair happens to span two different disciplines (e.g. a Designer's "Stakeholder Management" crediting a PM's "Customer-facing Experience" requirement) - curation reviews skill adjacency, not role compatibility.
+
+**Decision**:
+
+1. **Classify both jobs and candidates into a coarse role category** at sanitize time, from the LLM-extracted `SanitizedProfile.title` (`packages/domain/src/role-categories.ts`, `categorizeRoleTitle`): a small ordered set of keyword patterns (`engineering`, `data-ai`, `devops-cloud`, `product-management`, `delivery-management`, `business-analysis`, `consulting-advisory`, `leadership`, `design`, `sales-customer-success`), most-specific-first, deliberately not embedding-based - the same reasoning as ADR 0010's rejection of computed skill relations applies here: a coarse, auditable classifier that sometimes returns "unknown" beats a confident-looking vector score that can't be reviewed. Unrecognized titles classify as `null` ("unknown"), stored as `role_category` on `job_embeddings` and `candidates` (migration `009-role-categories`) alongside their other sanitize outputs.
+2. **Penalize a confident category mismatch, not an unknown one.** `areRoleCategoriesCompatible` treats `null` on either side as compatible (no signal to penalize against), same category as compatible, and otherwise checks a hand-authored adjacency table (e.g. `engineering` ↔ `devops-cloud` ↔ `data-ai` overlap in practice; `design` is deliberately isolated - no job in `TARGET_ROLES` is a design role, so a design-categorized CV is never a legitimate match for anything this platform ingests). An incompatible pair multiplies the blended score by `ROLE_MISMATCH_PENALTY` (default `0.5`).
+3. **Separately discount the zero-required-skills fallback.** When a job has no extracted required skills, `score = semanticSimilarity` used to be taken at face value; it's now multiplied by `NO_REQUIRED_SKILLS_PENALTY` (default `0.75`), reflecting that this is the least reliable of the three signals (see "Known limitations" in `Docs/matching_pipeline.md`) even before considering role compatibility.
+4. Both penalties are multiplicative and independent, applied after the skill/similarity blend: `score = blend * roleMultiplier * noSkillsMultiplier` (the latter only when `requiredSkillCount === 0`). Worked example: the Canonical posting's semantic similarity was ~0.75 against the Designer CV with (evidently) no discrete required skills extracted; with both penalties, `0.75 * 0.5 * 0.75 ≈ 0.28`, well under the default `MATCH_MIN_SIMILARITY` (`0.65`) - the match disappears instead of ranking as a strong fit.
+
+**Considered Options**:
+
+- **Hard filter (drop the match entirely on category mismatch) instead of a multiplicative penalty.** Rejected: `categorizeRoleTitle` is a coarse keyword classifier, not infallible, and adjacent-but-not-identical categories (e.g. a Business Analyst CV against a Product Manager opening) are legitimate matches that a hard boundary would wrongly exclude. A steep discount achieves the same practical outcome - the match sinks below `MATCH_MIN_SIMILARITY` in the vast majority of cases - while staying recoverable if the classifier is wrong and the rest of the signal is otherwise very strong.
+- **Embedding-based role classification** (compare the candidate/job anchor document against a category-anchor embedding, argmax) instead of keyword patterns. Rejected for the same reason ADR 0010 rejected computed skill relations: unauditable, and the specific failure this ADR fixes is embedding similarity being *unreliable at exactly this granularity* - reusing the same mechanism to fix its own failure mode is circular. A keyword classifier is coarser but reviewable and debuggable from the pattern list alone.
+- **Only categorize jobs (reuse ingestion-time title scope), skip candidates.** Rejected - there was never a signal on the candidate side to compare against; this is the actual gap. Candidates are not restricted to `TARGET_ROLES` and never should be (CVs of any role can be uploaded), so their category has to be derived independently, not reused from job-side scope filtering.
+- **A single "compatible: yes/no" boolean instead of a numeric multiplier.** Rejected in favor of a configurable weight for the same reason `SKILL_OVERLAP_WEIGHT` is a weight and not a hard gate: lets the penalty be tuned (or disabled, at `1.0`) without a code change if it proves too aggressive in practice.
+
+**Consequences**:
+
+- **Pro**: The reported failure mode (Designer CV, 75% against a Product Manager opening) is structurally addressed - re-scored, it lands well under the match threshold.
+- **Pro**: Both new signals are visible/auditable in the same way `skillCoverage`/`matchedSkills` already are - `categorizeRoleTitle` is a plain function over a title string, testable in isolation, and its category list doubles as documentation of what "compatible" means.
+- **Pro**: No change needed to ingestion, sanitization prompts, or the skill taxonomy - this is a third independent signal layered on top of the existing blend, following the same pattern ADR 0009 established for skill coverage.
+- **Con**: Candidates sanitized before this change have `role_category = null` until re-sanitized (re-uploaded) - same gap ADR 0009 documented for `job_required_skills`/`candidate_skills`, and no backfill sweep exists for candidates (there's no candidate-side backfill script at all yet, unlike jobs' `backfill:skills`).
+- **Con**: The category list and adjacency table are hand-curated and will need maintenance as new role types are seen in the wild - the same tradeoff ADR 0010 accepted for `skill_relations`: no signal for an uncategorized title, but no noise either.
+- **Con**: A title that doesn't clearly signal its category (e.g. a generic "Consultant" CV, or a job titled just "Specialist") stays `null` and gets no protection from this check - the classifier is deliberately conservative rather than guessing.
