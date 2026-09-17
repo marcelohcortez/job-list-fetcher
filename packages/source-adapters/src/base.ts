@@ -2,6 +2,13 @@ import type { SourceRecord } from '@job-fetcher/domain';
 
 export interface SourceAdapter {
   readonly name: string;
+  /**
+   * The distinct `sourceName` values this adapter can emit on a
+   * `SourceRecord`, so the UI can list every source (e.g. each Teamtailor
+   * board) as its own tab even before a run has produced any jobs for it.
+   * Defaults to `[name]` when an adapter emits records under a single name.
+   */
+  readonly sourceNames?: string[];
   fetchJobs(): Promise<SourceRecord[]>;
 }
 

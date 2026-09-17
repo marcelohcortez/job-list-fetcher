@@ -1,6 +1,4 @@
 import { describe, it, expect, vi } from 'vitest';
-import { isJobInScope } from '@job-fetcher/domain';
-import { CinodeAdapter } from '../src/cinode';
 import { TheirStackAdapter } from '../src/theirstack';
 import {
   JobTechDevAdapter,
@@ -8,6 +6,8 @@ import {
 } from '../src/jobtech';
 import { GreenhouseAdapter } from '../src/greenhouse';
 import { LeverAdapter } from '../src/lever';
+import { TeamtailorAdapter } from '../src/teamtailor';
+import { KeymanAdapter } from '../src/keyman';
 
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -15,253 +15,6 @@ function jsonResponse(body: unknown): Response {
     headers: { 'Content-Type': 'application/json' },
   });
 }
-
-const CREDS = { accessId: 'id', accessSecret: 'secret' };
-
-const sampleProject = {
-  id: 7,
-  seoId: 'acme-platform',
-  title: 'Platform modernisation',
-  description: 'Project description',
-  customer: { name: 'Acme Corp' },
-  currentState: 0,
-  estimatedCloseDate: '2026-09-30T00:00:00.000Z',
-  createdDateTime: '2026-09-01T00:00:00.000Z',
-  assignments: [
-    {
-      id: 42,
-      seoId: 'senior-software-engineer',
-      title: 'Senior Software Engineer',
-      description: 'Role description',
-      startDate: '2026-10-01T00:00:00.000Z',
-    },
-  ],
-};
-
-/** Serves the token, search, project and role-location calls in that order. */
-function cinodeFetcher(overrides: Record<string, unknown> = {}) {
-  const urls: string[] = [];
-  const fetcher = vi.fn(async (url: string, _init?: RequestInit) => {
-    urls.push(url);
-    if (url.endsWith('/token')) return jsonResponse({ access_token: 'jwt' });
-    if (url.endsWith('/network/requests/received')) {
-      return jsonResponse({ requests: [], totalItems: 0 });
-    }
-    if (url.endsWith('/projects/search')) {
-      return jsonResponse({ result: [{ id: 7 }], totalItems: 1 });
-    }
-    if (url.endsWith('/location')) return jsonResponse({ city: 'Göteborg' });
-    return jsonResponse({ ...sampleProject, ...overrides });
-  });
-  return { fetcher, urls };
-}
-
-const sampleRequest = {
-  requestId: 314,
-  requestSenderCompanyName: 'Partner AB',
-  title: 'Senior Data Engineer / ML Engineer - Databricks (Remote first)',
-  description: 'Databricks platform work.',
-  createdDateTime: '2026-09-05T00:00:00.000Z',
-  deadline: '2026-09-30T00:00:00.000Z',
-  status: 0,
-  isRemote: true,
-  location: null,
-};
-
-/** Answers the token call, then the received-requests feed; projects are denied. */
-function networkFetcher(overrides: Record<string, unknown> = {}) {
-  return vi.fn(async (url: string, _init?: RequestInit) => {
-    if (url.endsWith('/token')) return jsonResponse({ access_token: 'jwt' });
-    if (url.endsWith('/network/requests/received')) {
-      return jsonResponse({
-        requests: [{ ...sampleRequest, ...overrides }],
-        totalItems: 1,
-      });
-    }
-    return new Response('', { status: 403 });
-  });
-}
-
-describe('CinodeAdapter', () => {
-  it('exchanges credentials for a bearer token before querying', async () => {
-    const { fetcher, urls } = cinodeFetcher();
-    await new CinodeAdapter(CREDS, {
-      rateLimitMs: 0,
-      companyId: '1',
-      fetcher,
-    }).fetchJobs();
-
-    expect(urls[0]).toBe('https://api.cinode.com/token');
-    const tokenInit = fetcher.mock.calls[0][1] as RequestInit;
-    const basic = Buffer.from('id:secret').toString('base64');
-    expect((tokenInit.headers as Record<string, string>).Authorization).toBe(
-      `Basic ${basic}`,
-    );
-    const searchInit = fetcher.mock.calls[1][1] as RequestInit;
-    expect((searchInit.headers as Record<string, string>).Authorization).toBe(
-      'Bearer jwt',
-    );
-  });
-
-  it('maps each project role to a validated SourceRecord', async () => {
-    const { fetcher } = cinodeFetcher();
-    const records = await new CinodeAdapter(CREDS, {
-      rateLimitMs: 0,
-      companyId: '1',
-      fetcher,
-    }).fetchJobs();
-
-    expect(records).toHaveLength(1);
-    expect(records[0]).toMatchObject({
-      sourceName: 'cinode',
-      sourceJobId: '7-42',
-      title: 'Senior Software Engineer',
-      company: 'Acme Corp',
-      location: 'Göteborg',
-      status: 'active',
-      url: 'https://app.cinode.com/projects/acme-platform/roles/senior-software-engineer',
-    });
-    expect(records[0].deadline).toEqual(new Date('2026-09-30T00:00:00.000Z'));
-  });
-
-  it('marks roles on non-open projects as closed', async () => {
-    const { fetcher } = cinodeFetcher({ currentState: 40 });
-    const records = await new CinodeAdapter(CREDS, {
-      rateLimitMs: 0,
-      companyId: '1',
-      fetcher,
-    }).fetchJobs();
-    expect(records[0].status).toBe('closed');
-  });
-
-  it('keeps the role when it has no location on file', async () => {
-    const fetcher = vi.fn(async (url: string) => {
-      if (url.endsWith('/token')) return jsonResponse({ access_token: 'jwt' });
-      if (url.endsWith('/projects/search')) {
-        return jsonResponse({ result: [{ id: 7 }], totalItems: 1 });
-      }
-      if (url.endsWith('/location')) return new Response('', { status: 404 });
-      return jsonResponse(sampleProject);
-    });
-    const records = await new CinodeAdapter(CREDS, {
-      rateLimitMs: 0,
-      companyId: '1',
-      fetcher,
-    }).fetchJobs();
-    expect(records[0].location).toBe('');
-  });
-
-  it('ingests received network requests as openings', async () => {
-    const records = await new CinodeAdapter(CREDS, {
-      rateLimitMs: 0,
-      companyId: '1',
-      fetcher: networkFetcher(),
-    }).fetchJobs();
-
-    expect(records).toHaveLength(1);
-    expect(records[0]).toMatchObject({
-      sourceName: 'cinode',
-      sourceJobId: 'request-314',
-      title: 'Senior Data Engineer / ML Engineer - Databricks (Remote first)',
-      company: 'Partner AB',
-      status: 'active',
-    });
-    expect(records[0].deadline).toEqual(new Date('2026-09-30T00:00:00.000Z'));
-  });
-
-  it('labels an address-less remote request as Remote so it stays in scope', async () => {
-    const records = await new CinodeAdapter(CREDS, {
-      rateLimitMs: 0,
-      companyId: '1',
-      fetcher: networkFetcher(),
-    }).fetchJobs();
-    expect(records[0].location).toBe('Remote');
-    expect(isJobInScope(records[0].title, records[0].location)).toBe(true);
-  });
-
-  it('combines a city with the remote flag', async () => {
-    const records = await new CinodeAdapter(CREDS, {
-      rateLimitMs: 0,
-      companyId: '1',
-      fetcher: networkFetcher({ location: { city: 'Göteborg' } }),
-    }).fetchJobs();
-    expect(records[0].location).toBe('Göteborg (Remote)');
-  });
-
-  it('marks revoked and closed requests as closed', async () => {
-    const records = await new CinodeAdapter(CREDS, {
-      rateLimitMs: 0,
-      companyId: '1',
-      fetcher: networkFetcher({ status: 20 }),
-    }).fetchJobs();
-    expect(records[0].status).toBe('closed');
-  });
-
-  it('keeps one feed when the other is forbidden', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const records = await new CinodeAdapter(CREDS, {
-      rateLimitMs: 0,
-      companyId: '1',
-      fetcher: networkFetcher(),
-    }).fetchJobs();
-    expect(records).toHaveLength(1);
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('Cinode project roles unavailable'),
-    );
-    warn.mockRestore();
-  });
-
-  it('fails the run when every feed is forbidden', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const fetcher = vi.fn(async (url: string) => {
-      if (url.endsWith('/token')) return jsonResponse({ access_token: 'jwt' });
-      return new Response('', { status: 403 });
-    });
-    await expect(
-      new CinodeAdapter(CREDS, {
-        rateLimitMs: 0,
-        companyId: '1',
-        fetcher,
-      }).fetchJobs(),
-    ).rejects.toThrow(/denied access to every feed/);
-    warn.mockRestore();
-  });
-
-  it('reports a failed token exchange', async () => {
-    const fetcher = vi.fn(async () => new Response('nope', { status: 401 }));
-    await expect(
-      new CinodeAdapter(CREDS, {
-        rateLimitMs: 0,
-        companyId: '1',
-        fetcher,
-      }).fetchJobs(),
-    ).rejects.toThrow(/token request failed \(401\)/);
-  });
-
-  it('throws on non-OK responses', async () => {
-    const fetcher = vi.fn(async (url: string) => {
-      if (url.endsWith('/token')) return jsonResponse({ access_token: 'jwt' });
-      return new Response('err', { status: 429 });
-    });
-    await expect(
-      new CinodeAdapter(CREDS, {
-        rateLimitMs: 0,
-        companyId: '1',
-        fetcher,
-      }).fetchJobs(),
-    ).rejects.toThrow(/429/);
-  });
-
-  it('skips entirely without a companyId', async () => {
-    const fetcher = vi.fn(async () => jsonResponse({}));
-    const records = await new CinodeAdapter(CREDS, {
-      rateLimitMs: 0,
-      fetcher,
-    }).fetchJobs();
-    expect(records).toEqual([]);
-    expect(fetcher).not.toHaveBeenCalled();
-  });
-});
 
 describe('TheirStackAdapter', () => {
   it('queries the TheirStack search endpoint with Gothenburg filters', async () => {
@@ -554,6 +307,37 @@ describe('LeverAdapter', () => {
     expect(records[0].sourcePublishedAt).toBeInstanceOf(Date);
   });
 
+  it('includes the lists sections (requirements, responsibilities) alongside the intro', async () => {
+    const fetcher = vi.fn(async () =>
+      jsonResponse([
+        {
+          ...leverPosting,
+          lists: [
+            {
+              text: 'What You Will Do:',
+              content: '<ul><li>Ship features</li><li>Review code</li></ul>',
+            },
+            {
+              text: 'What You Will Bring:',
+              content: '<ul><li>5+ years with Python</li><li>Strong SQL</li></ul>',
+            },
+          ],
+        },
+      ]),
+    );
+    const records = await new LeverAdapter({
+      rateLimitMs: 0,
+      boards: [{ slug: 'spotify', name: 'Spotify' }],
+      fetcher,
+    }).fetchJobs();
+    expect(records[0].description).toContain('Join the band.');
+    expect(records[0].description).toContain('What You Will Do:');
+    expect(records[0].description).toContain('Ship features');
+    expect(records[0].description).toContain('What You Will Bring:');
+    expect(records[0].description).toContain('5+ years with Python');
+    expect(records[0].description).not.toContain('<ul>');
+  });
+
   it('throws when all instances fail', async () => {
     const fetcher = vi.fn(async () => new Response('', { status: 503 }));
     await expect(
@@ -563,5 +347,159 @@ describe('LeverAdapter', () => {
         fetcher,
       }).fetchJobs(),
     ).rejects.toThrow(/503/);
+  });
+});
+
+const teamtailorFeed = {
+  items: [
+    {
+      id: 'ecec636d-fa40-4325-83d3-bdf04f862052',
+      title: 'Data engineer',
+      url: 'https://career.nionit.com/jobs/8325044-data-engineer',
+      date_published: '2026-09-04T16:40:24+02:00',
+      content_html: '<p>Build data pipelines.</p>',
+      _jobposting: {
+        '@type': 'JobPosting',
+        validThrough: '2026-10-01T00:00:00.000Z',
+        hiringOrganization: { name: 'Nion' },
+        jobLocation: [
+          {
+            address: {
+              addressLocality: 'Gothenburg',
+              addressCountry: 'SE',
+            },
+          },
+        ],
+      },
+    },
+  ],
+};
+
+describe('TeamtailorAdapter', () => {
+  it('fetches each configured board from jobs.json', async () => {
+    const urls: string[] = [];
+    const fetcher = vi.fn(async (url: string) => {
+      urls.push(url);
+      return jsonResponse({ items: [] });
+    });
+    await new TeamtailorAdapter({
+      rateLimitMs: 0,
+      boards: [{ host: 'career.nionit.com', name: 'Nion' }],
+      fetcher,
+    }).fetchJobs();
+    expect(urls).toEqual(['https://career.nionit.com/jobs.json']);
+  });
+
+  it('maps feed items to SourceRecords', async () => {
+    const fetcher = vi.fn(async () => jsonResponse(teamtailorFeed));
+    const records = await new TeamtailorAdapter({
+      rateLimitMs: 0,
+      boards: [{ host: 'career.nionit.com', name: 'Nion' }],
+      fetcher,
+    }).fetchJobs();
+
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      sourceName: 'Nion',
+      sourceJobId: 'ecec636d-fa40-4325-83d3-bdf04f862052',
+      title: 'Data engineer',
+      company: 'Nion',
+      location: 'Gothenburg, SE',
+      url: 'https://career.nionit.com/jobs/8325044-data-engineer',
+      status: 'active',
+    });
+    expect(records[0].description).toBe('Build data pipelines.');
+    expect(records[0].deadline).toEqual(new Date('2026-10-01T00:00:00.000Z'));
+    expect(records[0].sourcePublishedAt).toBeInstanceOf(Date);
+  });
+
+  it('throws on failed board requests', async () => {
+    const fetcher = vi.fn(async () => new Response('', { status: 500 }));
+    await expect(
+      new TeamtailorAdapter({
+        rateLimitMs: 0,
+        boards: [{ host: 'career.nionit.com', name: 'Nion' }],
+        fetcher,
+      }).fetchJobs(),
+    ).rejects.toThrow(/500/);
+  });
+
+  it('exposes each configured board name for the UI to list as a source', () => {
+    const adapter = new TeamtailorAdapter({
+      boards: [
+        { host: 'career.nionit.com', name: 'Nion' },
+        { host: 'career.deploja.se', name: 'Deploja' },
+        { host: 'jobb.xamera.se', name: 'Xamera' },
+      ],
+    });
+    expect(adapter.sourceNames).toEqual(['Nion', 'Deploja', 'Xamera']);
+  });
+});
+
+const keymanPost = {
+  id: 31545,
+  date: '2026-09-16T00:00:00',
+  link: 'https://www.keyman.se/sv/data-it/product-owner-station-till-okq8-16326/',
+  title: { rendered: 'Product Owner Station till OKQ8' },
+  content: {
+    rendered:
+      '<table><tbody>' +
+      '<tr><td><strong>Roll</strong></td><td>Produktägare</td></tr>' +
+      '<tr><td><strong>Ort</strong></td><td>Göteborg</td></tr>' +
+      '<tr><td><strong>Land</strong></td><td>Sweden</td></tr>' +
+      '<tr><td><strong>Sista svarsdatum</strong></td><td>2026-09-18 (löpande)</td></tr>' +
+      '</tbody></table><p>Uppdragsbeskrivning här.</p>',
+  },
+};
+
+describe('KeymanAdapter', () => {
+  it('queries the Data/IT category', async () => {
+    const urls: string[] = [];
+    const fetcher = vi.fn(async (url: string) => {
+      urls.push(url);
+      return jsonResponse([]);
+    });
+    await new KeymanAdapter({ rateLimitMs: 0, fetcher }).fetchJobs();
+    expect(urls[0]).toContain('keyman.se');
+    expect(urls[0]).toContain('categories=19');
+  });
+
+  it('parses the role table embedded in the post body', async () => {
+    const fetcher = vi.fn(async () => jsonResponse([keymanPost]));
+    const records = await new KeymanAdapter({
+      rateLimitMs: 0,
+      fetcher,
+    }).fetchJobs();
+
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      sourceName: 'keyman',
+      sourceJobId: '31545',
+      title: 'Product Owner Station till OKQ8',
+      company: 'OKQ8',
+      location: 'Göteborg',
+      url: 'https://www.keyman.se/sv/data-it/product-owner-station-till-okq8-16326/',
+      status: 'active',
+    });
+    expect(records[0].deadline).toEqual(new Date('2026-09-18'));
+    expect(records[0].description).toContain('Uppdragsbeskrivning här.');
+  });
+
+  it('falls back to KeyMan when no client name is in the title', async () => {
+    const fetcher = vi.fn(async () =>
+      jsonResponse([{ ...keymanPost, title: { rendered: 'IAM-specialist' } }]),
+    );
+    const records = await new KeymanAdapter({
+      rateLimitMs: 0,
+      fetcher,
+    }).fetchJobs();
+    expect(records[0].company).toBe('KeyMan');
+  });
+
+  it('throws on failed requests', async () => {
+    const fetcher = vi.fn(async () => new Response('', { status: 500 }));
+    await expect(
+      new KeymanAdapter({ rateLimitMs: 0, fetcher }).fetchJobs(),
+    ).rejects.toThrow(/500/);
   });
 });

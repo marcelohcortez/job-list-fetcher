@@ -7,6 +7,7 @@ import {
   pickString,
   type AdapterOptions,
 } from './base';
+import { stripHtml } from './boards';
 
 export interface JobTechAdapterOptions extends AdapterOptions {
   baseUrl?: string;
@@ -112,7 +113,9 @@ export class JobTechDevAdapter {
       company: pickString(employer, 'name', 'workplace'),
       location: pickString(address, 'municipality', 'city'),
       description:
-        description.text != null ? pickString(description, 'text') : null,
+        description.text != null
+          ? stripHtml(pickString(description, 'text'))
+          : null,
       url: pickString(job, 'webpage_url', 'url'),
       applicationUrl:
         pick(application, 'url') != null

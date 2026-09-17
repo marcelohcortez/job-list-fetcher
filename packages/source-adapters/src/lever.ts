@@ -9,6 +9,7 @@ import {
 } from './base';
 import {
   DEFAULT_LEVER_BOARDS,
+  stripHtml,
   toBoardConfigs,
   type BoardConfig,
 } from './boards';
@@ -126,9 +127,37 @@ export class LeverAdapter {
     return location;
   }
 
+  /**
+   * Lever splits a posting's body into an intro (`descriptionPlain`) and a
+   * separate `lists` array of labelled sections - "What You Will Do",
+   * "What You Will Bring", "Requirements", etc. The requirements/
+   * qualifications content that actually matters for skill extraction lives
+   * almost entirely in those lists, not the intro, so dropping them (as a
+   * plain `descriptionPlain`-only read previously did) left the sanitizer
+   * with just company-boilerplate text and nothing to extract - see the
+   * 2026-09-15 matches-scoring discussion for how that surfaced.
+   */
   private resolveDescription(posting: Record<string, unknown>): string | null {
+    const parts: string[] = [];
     const plain = pick(posting, 'descriptionPlain');
-    if (typeof plain === 'string' && plain.trim() !== '') return plain.trim();
-    return null;
+    if (typeof plain === 'string' && plain.trim() !== '') parts.push(plain.trim());
+
+    const lists = pick(posting, 'lists');
+    if (Array.isArray(lists)) {
+      for (const entry of lists) {
+        const list = asRecord(entry);
+        const heading = pickString(list, 'text').trim();
+        const content = pick(list, 'content');
+        const body =
+          typeof content === 'string' && content.trim() !== ''
+            ? stripHtml(content)
+            : '';
+        if (!body) continue;
+        parts.push(heading ? `${heading}\n${body}` : body);
+      }
+    }
+
+    if (parts.length === 0) return null;
+    return parts.join('\n\n');
   }
 }

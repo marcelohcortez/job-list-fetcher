@@ -16,11 +16,9 @@ const DEFAULT_MAX_PAGES = 20;
  * "load more" button does: the list responds to `X-Requested-With` with a
  * fragment of cards and returns the next page's cursor in `X-Next-Cursor`.
  *
- * This is deliberately separate from `CinodeAdapter`: that one reads a
- * company's private API feeds, while the market is public and credential-free.
- * Being HTML, it is the more brittle of the two - a restyle of the card markup
- * will break parsing, which surfaces as zero records rather than an error, so
- * the adapter warns when a page yields no cards.
+ * Being HTML, it is brittle - a restyle of the card markup will break parsing,
+ * which surfaces as zero records rather than an error, so the adapter warns
+ * when a page yields no cards.
  */
 export class CinodeMarketAdapter {
   readonly name = 'cinode-market';
