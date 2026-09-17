@@ -1,0 +1,12 @@
+{
+  "name": "@job-fetcher/semantic-match",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "chromadb": "^3.5.0",
+    "ollama": "^0.6.3",
+    "zod": "^3.0.0"
+  }
+}
