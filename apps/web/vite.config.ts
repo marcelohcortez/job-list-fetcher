@@ -6,10 +6,7 @@ export default defineConfig({
   server: {
     port: 4001,
     proxy: {
-      '/jobs': 'http://localhost:4000',
-      '/ingestion': 'http://localhost:4000',
-      '/cv': 'http://localhost:4000',
-      '/health': 'http://localhost:4000',
+      '/api': 'http://localhost:4000',
     },
   },
 });

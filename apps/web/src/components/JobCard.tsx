@@ -1,30 +1,68 @@
-import type { CvMatchDetails, JobMark, JobOpening } from '../api';
+import type { Candidate, JobMark, JobOpening } from '../api';
 import { formatDate, snippet } from './format';
 
 interface JobCardProps {
   job: JobOpening;
-  match?: CvMatchDetails | null;
+  similarity?: number | null;
+  skillCoverage?: number | null;
+  matchedSkillCount?: number;
+  requiredSkillCount?: number;
+  matchedSkills?: string[];
+  missingSkills?: string[];
   markDisabled?: boolean;
   onMark?: (job: JobOpening, mark: JobMark) => void;
+  seenDisabled?: boolean;
+  onToggleSeen?: (job: JobOpening) => void;
+  candidates?: Candidate[];
+  sentCvsDisabled?: boolean;
+  onChangeSentCvs?: (job: JobOpening, candidateIds: string[]) => void;
 }
 
-export function JobCard({ job, match, markDisabled, onMark }: JobCardProps) {
-  const markButton = (mark: JobMark, label: string, className: string) => (
+function candidateLabel(candidate: Candidate): string {
+  return candidate.candidateName || candidate.fileName;
+}
+
+export function JobCard({
+  job,
+  similarity,
+  skillCoverage,
+  matchedSkillCount,
+  requiredSkillCount,
+  matchedSkills,
+  missingSkills,
+  markDisabled,
+  onMark,
+  seenDisabled,
+  onToggleSeen,
+  candidates,
+  sentCvsDisabled,
+  onChangeSentCvs,
+}: JobCardProps) {
+  const markButton = (
+    mark: JobMark,
+    activeLabel: string,
+    inactiveLabel: string,
+    className: string,
+    disabled?: boolean,
+  ) => (
     <button
       className={job.userMark === mark ? `mark active ${className}` : 'mark'}
       aria-pressed={job.userMark === mark}
-      disabled={markDisabled}
+      disabled={markDisabled || disabled}
       onClick={() => onMark?.(job, mark)}
     >
-      {job.userMark === mark ? label : label.replace('Marked', 'Mark as')}
+      {job.userMark === mark ? activeLabel : inactiveLabel}
     </button>
   );
 
+  const hasCvSent = job.sentCvIds.length > 0;
+
   return (
-    <li className="job">
+    <li className={job.seenAt ? 'job job-seen' : 'job'}>
       <div className="job-head">
         <h2>{job.title}</h2>
         <span className="status status-active">{job.status}</span>
+        {job.seenAt && <span className="status status-seen">Seen</span>}
       </div>
       <div className="meta">
         <span className="company">{job.companyName}</span>
@@ -34,29 +72,44 @@ export function JobCard({ job, match, markDisabled, onMark }: JobCardProps) {
           <span>Published {formatDate(job.publishedAt)}</span>
         )}
       </div>
-      {match && (
+      {similarity != null && (
         <div className="match">
-          <span className="match-score">Match {match.score}</span>
-          <span className="match-counts">
-            {match.titleHits} title · {match.bodyMatches} skill matches
+          <span className="match-score">
+            {Math.round(similarity * 100)}% match
           </span>
-          {match.matchedPhrases.length > 0 && (
-            <span className="chips">
-              {match.matchedPhrases.map((phrase) => (
-                <span key={phrase} className="chip">
-                  {phrase}
-                </span>
-              ))}
+          {skillCoverage != null && requiredSkillCount ? (
+            <span className="match-counts">
+              {matchedSkillCount}/{requiredSkillCount} required skills
             </span>
+          ) : null}
+        </div>
+      )}
+      {((matchedSkills && matchedSkills.length > 0) ||
+        (missingSkills && missingSkills.length > 0)) && (
+        <div className="skill-breakdown">
+          {matchedSkills && matchedSkills.length > 0 && (
+            <div className="skill-group skill-group-matched">
+              <span className="skill-group-label">Matched skills</span>
+              <div className="skill-chips">
+                {matchedSkills.map((skill) => (
+                  <span key={skill} className="skill-chip skill-chip-matched">
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
           )}
-          {match.matchedTerms.length > 0 && (
-            <span className="chips terms">
-              {match.matchedTerms.slice(0, 12).map((term) => (
-                <span key={term} className="chip term">
-                  {term}
-                </span>
-              ))}
-            </span>
+          {missingSkills && missingSkills.length > 0 && (
+            <div className="skill-group skill-group-missing">
+              <span className="skill-group-label">Missing skills</span>
+              <div className="skill-chips">
+                {missingSkills.map((skill) => (
+                  <span key={skill} className="skill-chip skill-chip-missing">
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -80,14 +133,67 @@ export function JobCard({ job, match, markDisabled, onMark }: JobCardProps) {
           </a>
         )}
       </div>
-      {onMark && (
+      {onChangeSentCvs && candidates && (
+        <div className="sent-cvs">
+          <span className="sent-cvs-label">CVs sent</span>
+          <details className="sent-cvs-picker">
+            <summary>
+              {job.sentCvIds.length === 0
+                ? 'None selected'
+                : job.sentCvIds
+                    .map((id) => {
+                      const candidate = candidates.find((c) => c.id === id);
+                      return candidate ? candidateLabel(candidate) : null;
+                    })
+                    .filter(Boolean)
+                    .join(', ')}
+            </summary>
+            <div className="sent-cvs-options">
+              {candidates.length === 0 ? (
+                <p className="muted">No CVs uploaded yet.</p>
+              ) : (
+                candidates.map((candidate) => (
+                  <label key={candidate.id} className="sent-cvs-option">
+                    <input
+                      type="checkbox"
+                      checked={job.sentCvIds.includes(candidate.id)}
+                      disabled={sentCvsDisabled}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...job.sentCvIds, candidate.id]
+                          : job.sentCvIds.filter((id) => id !== candidate.id);
+                        onChangeSentCvs(job, next);
+                      }}
+                    />
+                    {candidateLabel(candidate)}
+                  </label>
+                ))
+              )}
+            </div>
+          </details>
+        </div>
+      )}
+      {(onMark || onToggleSeen) && (
         <div className="marks">
-          {markButton('applied', 'Marked applied', 'applied')}
-          {markButton(
-            'not_interested',
-            'Marked not interested',
-            'not-interested',
+          {onToggleSeen && (
+            <button
+              className={job.seenAt ? 'mark active seen' : 'mark'}
+              aria-pressed={!!job.seenAt}
+              disabled={seenDisabled}
+              onClick={() => onToggleSeen(job)}
+            >
+              {job.seenAt ? 'Seen' : 'Mark as seen'}
+            </button>
           )}
+          {onMark &&
+            markButton('applied', 'Applied', 'Apply', 'applied', !hasCvSent)}
+          {onMark &&
+            markButton(
+              'not_interested',
+              'Not interested',
+              'Interested',
+              'not-interested',
+            )}
         </div>
       )}
     </li>
