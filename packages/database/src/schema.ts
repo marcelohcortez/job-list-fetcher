@@ -65,19 +65,85 @@ export type UserMark = 'applied' | 'not_interested';
 
 export interface UserJobMarksTable {
   job_opening_id: string;
-  mark: UserMark;
+  mark: UserMark | null;
+  seen_at: string | null;
   updated_at: string;
 }
 
-export interface CvProfileTable {
-  id: 'current';
+export type SanitizeStatus = 'pending' | 'sanitized' | 'failed';
+
+export type CandidateStatus = SanitizeStatus | 'duplicate';
+
+export interface CandidateTable {
+  id: string;
   file_name: string;
   content_type: string;
   size_bytes: number;
   pdf_bytes: Uint8Array | null;
   extracted_text: string;
+  candidate_name: string | null;
+  sanitized_json: string | null;
+  anchor_document: string | null;
+  role_category: string | null;
+  status: CandidateStatus;
+  error: string | null;
+  duplicate_of_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface JobEmbeddingTable {
+  job_opening_id: string;
+  status: SanitizeStatus;
+  anchor_document: string | null;
+  sanitized_json: string | null;
+  role_category: string | null;
+  error: string | null;
+  updated_at: string;
+}
+
+export type TargetRolePhraseSource = 'seed' | 'learned';
+
+export interface TargetRolePhraseTable {
+  id: string;
+  phrase: string;
+  normalized_phrase: string;
+  source: TargetRolePhraseSource;
+  created_at: string;
+}
+
+export interface SkillTable {
+  id: string;
+  canonical_label: string;
+  normalized_label: string;
+  created_at: string;
+}
+
+export interface JobRequiredSkillTable {
+  job_opening_id: string;
+  skill_id: string;
+}
+
+export interface CandidateSkillTable {
+  candidate_id: string;
+  skill_id: string;
+}
+
+export type SkillRelationType = 'equivalent' | 'related';
+
+export interface SkillRelationTable {
+  id: string;
+  skill_id_a: string;
+  skill_id_b: string;
+  relation_type: SkillRelationType;
+  weight: number;
+  created_at: string;
+}
+
+export interface JobSentCvTable {
+  job_opening_id: string;
+  candidate_id: string;
+  sent_at: string;
 }
 
 export interface JobDb {
@@ -85,5 +151,12 @@ export interface JobDb {
   source_records: SourceRecordsTable;
   ingestion_runs: IngestionRunsTable;
   user_job_marks: UserJobMarksTable;
-  cv_profile: CvProfileTable;
+  candidates: CandidateTable;
+  job_embeddings: JobEmbeddingTable;
+  target_role_phrases: TargetRolePhraseTable;
+  skills: SkillTable;
+  job_required_skills: JobRequiredSkillTable;
+  candidate_skills: CandidateSkillTable;
+  skill_relations: SkillRelationTable;
+  job_sent_cvs: JobSentCvTable;
 }

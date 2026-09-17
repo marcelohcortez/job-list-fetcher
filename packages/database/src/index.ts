@@ -5,7 +5,17 @@ export type {
   IngestionRunsTable,
   UserMark,
   UserJobMarksTable,
-  CvProfileTable,
+  CandidateTable,
+  JobEmbeddingTable,
+  SanitizeStatus,
+  TargetRolePhraseTable,
+  TargetRolePhraseSource,
+  SkillTable,
+  JobRequiredSkillTable,
+  CandidateSkillTable,
+  SkillRelationTable,
+  SkillRelationType,
+  JobSentCvTable,
 } from './schema';
 export {
   openSqlite,
@@ -28,11 +38,48 @@ export {
   finishIngestionRun,
   listIngestionRuns,
 } from './repositories/ingestion-runs';
-export { setUserMark, getUserMarks } from './repositories/job-marks';
+export { setUserMark, setJobSeen, getUserMarks } from './repositories/job-marks';
+export type { UserJobState } from './repositories/job-marks';
+export { setSentCvs, getSentCvIds } from './repositories/sent-cvs';
 export {
-  getCvProfile,
-  upsertCvProfile,
-  deleteCvProfile,
-  toCvProfileSummary,
-} from './repositories/cv-profile';
-export type { CvProfileSummary } from './repositories/cv-profile';
+  insertCandidate,
+  markCandidateSanitized,
+  markCandidateFailed,
+  markCandidateDuplicate,
+  resolveCandidateDuplicate,
+  getCandidate,
+  findSanitizedCandidateByName,
+  listCandidates,
+  deleteCandidate,
+  toCandidateSummary,
+} from './repositories/candidates';
+export type { CandidateSummary } from './repositories/candidates';
+export {
+  markJobSanitized,
+  markJobEmbeddingFailed,
+  getJobEmbeddingStatus,
+  getJobRoleCategories,
+} from './repositories/job-embeddings';
+export {
+  listTargetRolePhrases,
+  insertTargetRolePhraseIfNew,
+} from './repositories/target-role-phrases';
+export type { NewTargetRolePhrase } from './repositories/target-role-phrases';
+export {
+  insertSkillIfNew,
+  findSkillByNormalizedLabel,
+  replaceJobRequiredSkills,
+  replaceCandidateSkills,
+  getJobRequiredSkillIds,
+  getJobRequiredSkillLabels,
+  getCandidateSkillIds,
+} from './repositories/skills';
+export type { NewSkill, JobRequiredSkillLabel } from './repositories/skills';
+export {
+  insertSkillRelationIfNew,
+  getSkillRelationsFor,
+} from './repositories/skill-relations';
+export type {
+  NewSkillRelation,
+  SkillRelationPartner,
+} from './repositories/skill-relations';

@@ -123,14 +123,39 @@ async function upsertJobOpening(
 ): Promise<{ id: string; created: boolean }> {
   const { canonical_key } = jobRow(record, now);
 
-  const existing = await trx
+  // A row already owned by this exact source record (same id) takes
+  // priority over the canonical-key lookup below: the job's title/company/
+  // location may have drifted upstream since it was first ingested, which
+  // changes its canonical key. Falling through to an insert in that case
+  // would collide on the primary key instead of updating the row in place.
+  const ownRow = await trx
     .selectFrom('job_openings')
     .select(['id'])
-    .where('canonical_key', '=', canonical_key)
+    .where('id', '=', record.id)
     .executeTakeFirst();
 
+  const existing =
+    ownRow ??
+    (await trx
+      .selectFrom('job_openings')
+      .select(['id'])
+      .where('canonical_key', '=', canonical_key)
+      .executeTakeFirst());
+
   if (existing) {
-    const { canonical_key: _canonical, ...content } = jobRow(record, now);
+    // Never let the update touch `id` - a canonical-key match can point at a
+    // row created by a different source record, whose id differs from this
+    // one, and rewriting a row's primary key breaks the FK that
+    // source_records/job_marks/job_embeddings hold on the old value. Only
+    // refresh canonical_key when this row is the one this exact source
+    // record owns; a cross-source match keeps its original canonical_key.
+    const { id: _id, ...rest } = jobRow(record, now);
+    const content = ownRow
+      ? rest
+      : (() => {
+          const { canonical_key: _canonical, ...withoutKey } = rest;
+          return withoutKey;
+        })();
     await trx
       .updateTable('job_openings')
       .set({
