@@ -8,6 +8,7 @@ import {
   pickString,
   type AdapterOptions,
 } from './base';
+import { stripHtml } from './boards';
 
 export interface TheirStackAdapterOptions extends AdapterOptions {
   baseUrl?: string;
@@ -73,7 +74,7 @@ export class TheirStackAdapter {
         location: pickString(job, 'location', 'city'),
         description:
           pick(job, 'description', 'job_description') != null
-            ? pickString(job, 'description', 'job_description')
+            ? stripHtml(pickString(job, 'description', 'job_description'))
             : null,
         url: pickString(job, 'url', 'apply_url'),
         applicationUrl:
