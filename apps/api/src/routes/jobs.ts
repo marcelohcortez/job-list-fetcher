@@ -6,13 +6,21 @@ import {
   getUserMarks,
   listJobs,
   setUserMark,
+  setJobSeen,
+  getSentCvIds,
+  setSentCvs,
+  getCandidate,
 } from '@job-fetcher/database';
 import { getSourcesForJob, toSourceRecord } from '@job-fetcher/database';
 import type { JobOpening, SourceRecord } from '@job-fetcher/domain';
 
 const MARK_VALUES: readonly UserMark[] = ['applied', 'not_interested'];
 
-type JobWithMark = JobOpening & { userMark: UserMark | null };
+type JobWithMark = JobOpening & {
+  userMark: UserMark | null;
+  seenAt: string | null;
+  sentCvIds: string[];
+};
 
 export function jobsRoutes(db: Kysely<JobDb>) {
   const app = new Hono();
@@ -28,13 +36,14 @@ export function jobsRoutes(db: Kysely<JobDb>) {
   };
 
   const withMark = async (jobs: JobOpening[]): Promise<JobWithMark[]> => {
-    const marks = await getUserMarks(
-      db,
-      jobs.map((job) => job.id),
-    );
+    const jobIds = jobs.map((job) => job.id);
+    const marks = await getUserMarks(db, jobIds);
+    const sentCvs = await getSentCvIds(db, jobIds);
     return jobs.map((job) => ({
       ...job,
-      userMark: marks[job.id] ?? null,
+      userMark: marks[job.id]?.mark ?? null,
+      seenAt: marks[job.id]?.seenAt ?? null,
+      sentCvIds: sentCvs[job.id] ?? [],
     }));
   };
 
@@ -78,11 +87,14 @@ export function jobsRoutes(db: Kysely<JobDb>) {
       .map(toSourceRecord)
       .map(publicSource);
     const marks = await getUserMarks(db, [id]);
+    const sentCvs = await getSentCvIds(db, [id]);
     return c.json({
       data: {
         ...publicJob(job),
         sourceRecords: sources,
-        userMark: marks[id] ?? null,
+        userMark: marks[id]?.mark ?? null,
+        seenAt: marks[id]?.seenAt ?? null,
+        sentCvIds: sentCvs[id] ?? [],
       },
     });
   });
@@ -100,6 +112,45 @@ export function jobsRoutes(db: Kysely<JobDb>) {
 
     await setUserMark(db, id, mark as UserMark | null);
     return c.json({ data: { userMark: mark as UserMark | null } });
+  });
+
+  app.put('/:id/seen', async (c) => {
+    const id = c.req.param('id');
+    const job = await getJobById(db, id);
+    if (!job) return c.json({ error: 'not_found' }, 404);
+
+    const body = await c.req.json().catch(() => null);
+    const seen: unknown = body?.seen ?? true;
+    if (typeof seen !== 'boolean') {
+      return c.json({ error: 'invalid_seen' }, 400);
+    }
+
+    await setJobSeen(db, id, seen);
+    const marks = await getUserMarks(db, [id]);
+    return c.json({ data: { seenAt: marks[id]?.seenAt ?? null } });
+  });
+
+  app.put('/:id/sent-cvs', async (c) => {
+    const id = c.req.param('id');
+    const job = await getJobById(db, id);
+    if (!job) return c.json({ error: 'not_found' }, 404);
+
+    const body = await c.req.json().catch(() => null);
+    const candidateIds: unknown = body?.candidateIds;
+    if (
+      !Array.isArray(candidateIds) ||
+      !candidateIds.every((v) => typeof v === 'string')
+    ) {
+      return c.json({ error: 'invalid_candidate_ids' }, 400);
+    }
+
+    for (const candidateId of candidateIds) {
+      const candidate = await getCandidate(db, candidateId);
+      if (!candidate) return c.json({ error: 'unknown_candidate' }, 400);
+    }
+
+    await setSentCvs(db, id, candidateIds);
+    return c.json({ data: { sentCvIds: candidateIds } });
   });
 
   return app;
