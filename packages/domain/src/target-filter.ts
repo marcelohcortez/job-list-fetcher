@@ -28,8 +28,44 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/**
+ * Generic job-title suffix words. When a target role ends with one of these,
+ * the suffix is made optional in its pattern, so e.g. "Customer Enablement
+ * Specialist" also matches a listing titled just "Customer Enablement".
+ * Only applied when the remaining phrase still has 2+ words, so roles like
+ * "Technical Lead" (which would degrade to the overly generic "Technical")
+ * keep requiring the full phrase.
+ */
+const GENERIC_TITLE_SUFFIXES = new Set([
+  'specialist',
+  'manager',
+  'lead',
+  'engineer',
+  'developer',
+  'architect',
+  'consultant',
+  'analyst',
+]);
+
 const TARGET_TITLE_PATTERNS: readonly RegExp[] = TARGET_ROLES.map((role) => {
   const phrase = canonicalizeCompounds(normalizeTitle(role));
+  const words = phrase.split(' ');
+  const lastWord = words[words.length - 1];
+  if (words.length > 2 && GENERIC_TITLE_SUFFIXES.has(lastWord)) {
+    const corePhrase = words.slice(0, -1).join(' ');
+    const otherSuffixes = [...GENERIC_TITLE_SUFFIXES]
+      .filter((suffix) => suffix !== lastWord)
+      .map(escapeRegExp)
+      .join('|');
+    // Core phrase followed by nothing, or by its own suffix - but not by a
+    // *different* generic suffix, which would mean a different role
+    // (e.g. "Customer Success Specialist" must not match "Customer Success
+    // Engineer"'s pattern just because "Customer Success" is a substring).
+    return new RegExp(
+      `\\b${escapeRegExp(corePhrase)}\\b(?!\\s+(?:${otherSuffixes})\\b)(?:\\s+${escapeRegExp(lastWord)}\\b)?`,
+      'i',
+    );
+  }
   return new RegExp(`\\b${escapeRegExp(phrase)}\\b`, 'i');
 });
 

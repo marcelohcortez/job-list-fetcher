@@ -19,6 +19,7 @@ export {
   canonicalizeLocation,
   matchLocations,
 } from './location-matcher';
+export { normalizeSkillLabel } from './skill-normalizer';
 export { TARGET_ROLES } from './target-roles';
 export {
   matchesTargetTitle,
@@ -26,6 +27,8 @@ export {
   isJobInScope,
 } from './target-filter';
 export { isJobEligible, JOB_TIMEZONE } from './deadline-filter';
+export { ROLE_CATEGORIES, categorizeRoleTitle, areRoleCategoriesCompatible } from './role-categories';
+export type { RoleCategory } from './role-categories';
 export type { JobEligibilityResult } from './deadline-filter';
 export {
   calculateCanonicalKey,

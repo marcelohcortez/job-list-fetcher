@@ -178,4 +178,59 @@ export const TARGET_ROLES: readonly string[] = [
   'Head of Technology, Digital',
   'Director of Engineering',
   'Director of Digital Transformation',
+
+  // Swedish-market equivalents of the roles above. Several source boards
+  // (Nion, Xamera, Keyman) post almost exclusively in Swedish, and the
+  // regex/vector matching this list feeds is otherwise English-only - a
+  // clearly in-scope title like "Mjukvaruutvecklare" in Gothenburg would
+  // never match without one of these. `seedTargetRolePhrases` embeds every
+  // entry in this file, so these also seed the vector-similarity fallback.
+  'Systemutvecklare',
+  'Mjukvaruutvecklare',
+  'Frontendutvecklare',
+  'Backendutvecklare',
+  'Fullstackutvecklare',
+  'Applikationsutvecklare',
+  'Molnutvecklare',
+  'Integrationsutvecklare',
+  'Embeddedutvecklare',
+  'AI-utvecklare',
+  'Android-utvecklare',
+  'iOS-utvecklare',
+  'DevOps-ingenjör',
+  'Systemingenjör',
+  'Systemarkitekt',
+  'Molnarkitekt',
+  'Lösningsarkitekt',
+  'Mjukvaruarkitekt',
+  'Dataingenjör',
+  'BI-utvecklare',
+  'Teknisk konsult',
+  'IT-konsult',
+  'Systemkonsult',
+  'Molnkonsult',
+  'DevOps-konsult',
+  'Säkerhetsingenjör',
+  'Säkerhetsarkitekt',
+  'IT-säkerhetskonsult',
+  'Cybersäkerhetsspecialist',
+  'IT-projektledare',
+  'Teknisk projektledare',
+  'Produktägare',
+
+  // Bare generic-suffix nouns, deliberately not paired with a prefix.
+  // Swedish compounds developer/consultant titles into one fused word
+  // ("PHP-utvecklare", "SAP SuccessFactors-konsult") rather than the
+  // space-separated "Core Phrase + Suffix" shape GENERIC_TITLE_SUFFIXES
+  // (target-filter.ts) already makes optional for English - there's no
+  // finite prefix list to curate, so these match on the suffix alone.
+  // Limited to "utvecklare"/"konsult": every "-utvecklare" observed on the
+  // Nion/Xamera/Keyman boards is a software role, and "-konsult" postings
+  // on these IT-focused boards read the same way; "-ingenjör"/"-arkitekt"
+  // are deliberately NOT made generic here - both pull in unrelated
+  // mechanical/electrical engineering titles from the same boards
+  // (e.g. "Mekanikingenjör", "Elektronikingenjör") that plain word-suffix
+  // matching can't tell apart from the software/IT kind.
+  'Utvecklare',
+  'Konsult',
 ];

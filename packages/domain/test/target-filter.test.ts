@@ -48,6 +48,17 @@ describe('matchesTargetTitle', () => {
     expect(matchesTargetTitle('Principal Product Manager')).toBe(false);
   });
 
+  it('matches a target role with its generic suffix word dropped', () => {
+    expect(matchesTargetTitle('Customer Enablement')).toBe(true);
+    expect(matchesTargetTitle('AI Enablement')).toBe(true);
+    expect(matchesTargetTitle('Technical Account')).toBe(true);
+  });
+
+  it('does not match a target role core phrase with a different suffix', () => {
+    expect(matchesTargetTitle('Customer Enablement Manager')).toBe(false);
+    expect(matchesTargetTitle('Technical Account Specialist')).toBe(false);
+  });
+
   it('rejects empty titles', () => {
     expect(matchesTargetTitle('')).toBe(false);
     expect(matchesTargetTitle('   ')).toBe(false);
@@ -55,6 +66,40 @@ describe('matchesTargetTitle', () => {
 
   it('matches case-insensitively', () => {
     expect(matchesTargetTitle('senior software engineer')).toBe(true);
+  });
+
+  it('matches curated Swedish role phrases', () => {
+    expect(matchesTargetTitle('Systemutvecklare')).toBe(true);
+    expect(matchesTargetTitle('Mjukvaruutvecklare')).toBe(true);
+    expect(
+      matchesTargetTitle('Android-utvecklare till produktnära teknikbolag'),
+    ).toBe(true);
+    expect(matchesTargetTitle('Senior DevOps-ingenjör')).toBe(true);
+    expect(matchesTargetTitle('Lösningsarkitekt')).toBe(true);
+  });
+
+  it('matches any hyphenated compound ending in utvecklare or konsult', () => {
+    expect(matchesTargetTitle('PHP-utvecklare till kund')).toBe(true);
+    expect(
+      matchesTargetTitle('Interim SAP SuccessFactors-konsult – POSTNORD'),
+    ).toBe(true);
+  });
+
+  it('does not match unrelated Swedish engineering/trade titles', () => {
+    expect(matchesTargetTitle('Mekanikkonstruktör till försvarsbolag')).toBe(
+      false,
+    );
+    expect(
+      matchesTargetTitle('Testingenjör inom avancerad elektronik'),
+    ).toBe(false);
+    expect(
+      matchesTargetTitle(
+        'Provledare/elektroingenjör till innovativt bolag',
+      ),
+    ).toBe(false);
+    expect(matchesTargetTitle('Elkonstruktör inom medicinteknik')).toBe(
+      false,
+    );
   });
 });
 
