@@ -184,6 +184,64 @@ export const TARGET_ROLES: readonly string[] = [
   'Director of Engineering',
   'Director of Digital Transformation',
 
+  // Cybersecurity
+  'Security Engineer',
+  'Cybersecurity Engineer',
+  'Cloud Security Engineer',
+  'Application Security Engineer',
+  'Security Architect',
+  'Cybersecurity Architect',
+  'Security Consultant',
+  'Cybersecurity Consultant',
+  'Security Analyst',
+  'Cybersecurity Analyst',
+  'Information Security Consultant',
+  'Information Security Analyst',
+  'Security Operations Engineer',
+  'DevSecOps Engineer',
+  'Penetration Tester',
+
+  // Data
+  'Data Analyst',
+  'Data Scientist',
+  'Senior Data Scientist',
+  'Data Architect',
+  'Data Product Manager',
+  'BI Developer',
+  'Business Intelligence Developer',
+  'Business Intelligence Analyst',
+
+  // AI / LLM
+  'AI Engineer',
+  'Senior AI Engineer',
+  'AI Consultant',
+  'AI Architect',
+  'Machine Learning Consultant',
+  'LLM Engineer',
+  'LLM Application Engineer',
+  'LLM Solutions Engineer',
+  'Prompt Engineer',
+  'NLP Engineer',
+
+  // Broad bare keywords: deliberately unqualified so they match as a
+  // substring of any title, including combo titles joined by "/", "or" or
+  // "and" (e.g. "iOS/Android Developer", "Business Consultant / Business
+  // Analyst") - `matchesTargetTitle` tests each TARGET_ROLES phrase as a
+  // word-boundary substring of the whole (normalized) title, not an exact
+  // match, so one matching component is enough to bring the whole listing
+  // into scope.
+  'Developer',
+  'Tech Lead',
+  'Platform Engineer',
+  'System Architect',
+  'Threat',
+  'Incident',
+  'Generative AI Analyst',
+  'GenAI',
+  'Business Analyst',
+  'Embedded',
+  'Vulnerability',
+
   // Swedish-market equivalents of the roles above. Several source boards
   // (Nion, Xamera, Keyman) post almost exclusively in Swedish, and the
   // regex/vector matching this list feeds is otherwise English-only - a
@@ -219,6 +277,10 @@ export const TARGET_ROLES: readonly string[] = [
   'Säkerhetsarkitekt',
   'IT-säkerhetskonsult',
   'Cybersäkerhetsspecialist',
+  'Säkerhetsanalytiker',
+  'Dataanalytiker',
+  'Datavetare',
+  'AI-ingenjör',
   'IT-projektledare',
   'Teknisk projektledare',
   'Produktägare',
