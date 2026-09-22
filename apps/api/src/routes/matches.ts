@@ -10,6 +10,8 @@ import {
   getSkillRelationsFor,
   getCandidate,
   listCandidates,
+  getUserMarks,
+  getSentCvIds,
 } from '@job-fetcher/database';
 import { matchJobsForCandidate, type SemanticPipeline } from '@job-fetcher/semantic-match';
 import type { JobOpening, RoleCategory, SeniorityLevel } from '@job-fetcher/domain';
@@ -88,6 +90,9 @@ type JobWithSimilarity = Omit<JobOpening, 'rawPayload'> & {
   requiredSkillCount: number;
   matchedSkills: string[];
   missingSkills: string[];
+  userMark: 'applied' | 'not_interested' | null;
+  seenAt: string | null;
+  sentCvIds: string[];
 };
 
 function publicJob(
@@ -101,9 +106,14 @@ function publicJob(
     matchedSkills: string[];
     missingSkills: string[];
   },
+  mark: {
+    userMark: 'applied' | 'not_interested' | null;
+    seenAt: string | null;
+    sentCvIds: string[];
+  },
 ): JobWithSimilarity {
   const { rawPayload, ...rest } = job;
-  return { ...rest, ...score };
+  return { ...rest, ...score, ...mark };
 }
 
 /**
@@ -271,6 +281,9 @@ async function matchesForCandidate(
   const skillRelations = await getSkillRelationsFor(db, [...jobSkillIds]);
   const jobRoleCategories = await getJobRoleCategories(db, entries.map((entry) => entry.job.id));
   const jobSeniorityLevels = await getJobSeniorityLevels(db, entries.map((entry) => entry.job.id));
+  const jobIds = entries.map((entry) => entry.job.id);
+  const marks = await getUserMarks(db, jobIds);
+  const sentCvs = await getSentCvIds(db, jobIds);
 
   const jobs: JobWithSimilarity[] = [];
   for (const { hit, job, jobSkills } of entries) {
@@ -295,15 +308,23 @@ async function matchesForCandidate(
     );
     if (score < config.minSimilarity) continue;
     jobs.push(
-      publicJob(job, {
-        similarity: score,
-        semanticSimilarity: hit.similarity,
-        skillCoverage,
-        matchedSkillCount,
-        requiredSkillCount: jobSkills.length,
-        matchedSkills,
-        missingSkills,
-      }),
+      publicJob(
+        job,
+        {
+          similarity: score,
+          semanticSimilarity: hit.similarity,
+          skillCoverage,
+          matchedSkillCount,
+          requiredSkillCount: jobSkills.length,
+          matchedSkills,
+          missingSkills,
+        },
+        {
+          userMark: marks[job.id]?.mark ?? null,
+          seenAt: marks[job.id]?.seenAt ?? null,
+          sentCvIds: sentCvs[job.id] ?? [],
+        },
+      ),
     );
   }
   return jobs.sort((a, b) => b.similarity - a.similarity);
