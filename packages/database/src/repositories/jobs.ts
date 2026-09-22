@@ -205,6 +205,21 @@ export function listJobs(db: Kysely<JobDb>, filter: JobFilter = {}) {
     );
   }
 
+  const now = new Date().toISOString();
+  const oneYearAgo = new Date(
+    Date.now() - 365 * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  q = q.where((eb) =>
+    eb.or([eb('deadline_at', 'is', null), eb('deadline_at', '>=', now)]),
+  );
+  q = q.where((eb) =>
+    eb.or([
+      eb('published_at', 'is', null),
+      eb('published_at', '>=', oneYearAgo),
+    ]),
+  );
+
   const limit = filter.limit ?? 50;
   const offset = filter.offset ?? 0;
 

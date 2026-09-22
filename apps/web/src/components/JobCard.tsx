@@ -55,7 +55,7 @@ export function JobCard({
     </button>
   );
 
-  const hasCvSent = job.sentCvIds.length > 0;
+  const hasCvSent = (job.sentCvIds?.length ?? 0) > 0;
 
   return (
     <li className={job.seenAt ? 'job job-seen' : 'job'}>

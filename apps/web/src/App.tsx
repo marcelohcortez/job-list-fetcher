@@ -19,7 +19,7 @@ import { UploadCvTab } from './UploadCvTab';
 import { UploadCvsTab } from './UploadCvsTab';
 import { MatchesTab } from './MatchesTab';
 
-type Tab = 'jobs' | 'upload-cv' | 'upload-cvs' | 'matches';
+type Tab = 'jobs' | 'applied' | 'upload-cv' | 'upload-cvs' | 'matches';
 
 interface Summary {
   counts: IngestionRun['counts'];
@@ -29,6 +29,7 @@ interface Summary {
 
 const NAV_ITEMS: { id: Tab; path: string; label: string; icon: string }[] = [
   { id: 'jobs', path: '/jobs', label: 'Openings', icon: '💼' },
+  { id: 'applied', path: '/applied', label: 'Applied', icon: '✅' },
   { id: 'upload-cv', path: '/upload-cv', label: 'Upload CV', icon: '📄' },
   { id: 'upload-cvs', path: '/upload-cvs', label: 'Upload CVs', icon: '📚' },
   { id: 'matches', path: '/matches', label: 'Matches', icon: '🎯' },
@@ -39,6 +40,10 @@ const TAB_TITLES: Record<Tab, { title: string; subtitle: string }> = {
     title: 'Openings',
     subtitle:
       'Curated IT, Business, Data and Cybersecurity roles in Gothenburg and across Europe/EMEA.',
+  },
+  applied: {
+    title: 'Applied',
+    subtitle: 'Job openings you have already applied to.',
   },
   'upload-cv': {
     title: 'Upload CV',
@@ -88,8 +93,11 @@ function JobsTab({
   const [activeSource, setActiveSource] = useState<string>(ALL_SOURCES);
 
   const now = Date.now();
+  const oneYearAgo = now - 365 * 24 * 60 * 60 * 1000;
   const activeJobs = jobs.filter(
-    (job) => !job.deadlineAt || new Date(job.deadlineAt).getTime() >= now,
+    (job) =>
+      (!job.deadlineAt || new Date(job.deadlineAt).getTime() >= now) &&
+      (!job.publishedAt || new Date(job.publishedAt).getTime() >= oneYearAgo),
   );
 
   const sources = Array.from(
@@ -175,6 +183,73 @@ function JobsTab({
       ) : (
         <ul className="jobs">
           {visibleJobs.map((job) => (
+            <JobCard
+              key={job.id}
+              job={job}
+              markDisabled={pendingMarks[job.id]}
+              onMark={onMark}
+              seenDisabled={pendingSeen[job.id]}
+              onToggleSeen={onToggleSeen}
+              candidates={candidates}
+              sentCvsDisabled={pendingSentCvs[job.id]}
+              onChangeSentCvs={onChangeSentCvs}
+            />
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+function AppliedTab({
+  jobs,
+  loading,
+  error,
+  pendingMarks,
+  onMark,
+  pendingSeen,
+  onToggleSeen,
+  candidates,
+  pendingSentCvs,
+  onChangeSentCvs,
+}: {
+  jobs: JobOpening[];
+  loading: boolean;
+  error: string | null;
+  pendingMarks: Record<string, boolean>;
+  onMark: (job: JobOpening, mark: JobMark) => void;
+  pendingSeen: Record<string, boolean>;
+  onToggleSeen: (job: JobOpening) => void;
+  candidates: Candidate[];
+  pendingSentCvs: Record<string, boolean>;
+  onChangeSentCvs: (job: JobOpening, candidateIds: string[]) => void;
+}) {
+  const appliedJobs = jobs.filter((job) => job.userMark === 'applied');
+
+  return (
+    <>
+      <div className="toolbar">
+        <span className="count">
+          {appliedJobs.length} job{appliedJobs.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      {error && (
+        <div className="error" role="alert">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <p className="muted">Loading jobs...</p>
+      ) : appliedJobs.length === 0 ? (
+        <p className="muted">
+          No applications yet. Mark a job as &quot;Applied&quot; from the
+          Openings tab.
+        </p>
+      ) : (
+        <ul className="jobs">
+          {appliedJobs.map((job) => (
             <JobCard
               key={job.id}
               job={job}
@@ -444,6 +519,23 @@ export default function App() {
                   error={error}
                   query={query}
                   onSearch={handleSearch}
+                  pendingMarks={pendingMarks}
+                  onMark={handleMark}
+                  pendingSeen={pendingSeen}
+                  onToggleSeen={handleToggleSeen}
+                  candidates={candidates}
+                  pendingSentCvs={pendingSentCvs}
+                  onChangeSentCvs={handleChangeSentCvs}
+                />
+              }
+            />
+            <Route
+              path="/applied"
+              element={
+                <AppliedTab
+                  jobs={jobs}
+                  loading={loading}
+                  error={error}
                   pendingMarks={pendingMarks}
                   onMark={handleMark}
                   pendingSeen={pendingSeen}
