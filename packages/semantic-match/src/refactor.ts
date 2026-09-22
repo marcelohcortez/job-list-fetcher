@@ -1,5 +1,5 @@
 import { Ollama } from 'ollama';
-import type { OllamaConfig } from './ollama';
+import { createOllamaFetch, type OllamaConfig } from './ollama';
 
 /**
  * Automated, headless cousin of the interactive `cv-refactor` Claude Code
@@ -45,7 +45,7 @@ const REFACTOR_SYSTEM_PROMPT =
   'commentary, no markdown fences.';
 
 export function createOllamaCvRefactor(config: OllamaConfig): CvRefactorClient {
-  const client = new Ollama({ host: config.host });
+  const client = new Ollama({ host: config.host, fetch: createOllamaFetch() });
 
   return {
     async refactorCv(rawText) {

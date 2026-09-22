@@ -7,6 +7,7 @@
   "dependencies": {
     "chromadb": "^3.5.0",
     "ollama": "^0.6.3",
+    "undici": "^8.11.0",
     "zod": "^3.0.0"
   }
 }

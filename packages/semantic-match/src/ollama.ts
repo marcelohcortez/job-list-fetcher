@@ -1,4 +1,5 @@
 import { Ollama } from 'ollama';
+import { Agent, fetch as undiciFetch } from 'undici';
 import {
   PROFILE_FIELD_DESCRIPTIONS,
   SanitizedCandidateSchema,
@@ -6,6 +7,28 @@ import {
   type SanitizedCandidate,
   type SanitizedJob,
 } from './schema';
+
+/**
+ * Node's global `fetch` (undici under the hood) times out a request that
+ * hasn't received response headers within 300s. A long CV/job ad on a
+ * locally-hosted 7B model can spend longer than that just on prompt
+ * prefill before the first token - no data at all arrives until then, so
+ * the request throws `UND_ERR_HEADERS_TIMEOUT` ("fetch failed") even
+ * though Ollama is still working, not stuck. Confirmed as the cause of a
+ * CV upload that failed every time (2026-09-22): a ~12k-char CV
+ * consistently exceeded the default timeout on this hardware. Give Ollama
+ * requests specifically a much longer allowance instead of raising the
+ * global default, since Ollama is the only genuinely slow local call this
+ * package makes.
+ */
+export function createOllamaFetch(): typeof fetch {
+  const dispatcher = new Agent({
+    headersTimeout: 20 * 60 * 1000,
+    bodyTimeout: 20 * 60 * 1000,
+  });
+  return ((input, init) =>
+    undiciFetch(input as string, { ...init, dispatcher } as never)) as typeof fetch;
+}
 
 export interface OllamaConfig {
   host: string;
@@ -113,7 +136,7 @@ const CANDIDATE_SYSTEM_PROMPT =
   SKILL_SPLIT_INSTRUCTION;
 
 export function createOllamaSanitizer(config: OllamaConfig): SanitizerClient {
-  const client = new Ollama({ host: config.host });
+  const client = new Ollama({ host: config.host, fetch: createOllamaFetch() });
 
   async function chatJson(
     system: string,
