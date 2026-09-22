@@ -18,7 +18,7 @@ import {
   processCandidate,
   type SemanticPipeline,
 } from '@job-fetcher/semantic-match';
-import { categorizeRoleTitle } from '@job-fetcher/domain';
+import { categorizeRoleTitle, categorizeSeniority } from '@job-fetcher/domain';
 import { extractPdfText } from '../cv/pdf';
 import type { SkillCanonicalizer } from '../skill-taxonomy';
 
@@ -56,6 +56,7 @@ async function sanitizeCandidate(
     const skillIds = await canonicalizeSkills(sanitized.requiredSkills);
     await replaceCandidateSkills(db, candidateId, skillIds);
     const roleCategory = categorizeRoleTitle(sanitized.title);
+    const seniorityLevel = categorizeSeniority(sanitized.title, sanitized.experienceProfile);
 
     const existing = await findSanitizedCandidateByName(
       db,
@@ -68,6 +69,7 @@ async function sanitizeCandidate(
         sanitizedJson: JSON.stringify(sanitized),
         anchorDocument,
         roleCategory,
+        seniorityLevel,
         duplicateOfId: existing.id,
       });
     } else {
@@ -76,6 +78,7 @@ async function sanitizeCandidate(
         sanitizedJson: JSON.stringify(sanitized),
         anchorDocument,
         roleCategory,
+        seniorityLevel,
       });
     }
   } catch (err) {

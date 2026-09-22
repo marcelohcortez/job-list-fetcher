@@ -59,6 +59,7 @@ export {
   markJobEmbeddingFailed,
   getJobEmbeddingStatus,
   getJobRoleCategories,
+  getJobSeniorityLevels,
 } from './repositories/job-embeddings';
 export {
   listTargetRolePhrases,

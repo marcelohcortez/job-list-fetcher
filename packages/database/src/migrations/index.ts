@@ -10,6 +10,7 @@ import { skillRelationsMigration } from './008-skill-relations';
 import { roleCategoriesMigration } from './009-role-categories';
 import { seenJobsMigration } from './010-seen-jobs';
 import { jobSentCvsMigration } from './011-job-sent-cvs';
+import { seniorityLevelMigration } from './012-seniority-level';
 
 export const migrations: Record<string, Migration> = {
   '001-initial': initialMigration,
@@ -23,6 +24,7 @@ export const migrations: Record<string, Migration> = {
   '009-role-categories': roleCategoriesMigration,
   '010-seen-jobs': seenJobsMigration,
   '011-job-sent-cvs': jobSentCvsMigration,
+  '012-seniority-level': seniorityLevelMigration,
 };
 
 export const migrationProvider = {

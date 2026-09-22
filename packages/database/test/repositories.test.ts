@@ -323,6 +323,7 @@ describe('repositories', () => {
       sanitizedJson: JSON.stringify({ title: 'Software Developer' }),
       anchorDocument: 'JOB TITLE: Software Developer',
       roleCategory: 'engineering',
+      seniorityLevel: 'mid',
     });
 
     const sanitized = await getCandidate(db, created.id);
@@ -361,6 +362,7 @@ describe('repositories', () => {
       sanitizedJson: JSON.stringify({ title: 'Software Engineer' }),
       anchorDocument: 'JOB TITLE: Software Engineer',
       roleCategory: 'engineering',
+      seniorityLevel: 'mid',
     });
     const sanitized = await getJobEmbeddingStatus(db, jobOpeningId);
     expect(sanitized!.status).toBe('sanitized');

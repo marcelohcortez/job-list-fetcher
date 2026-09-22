@@ -19,7 +19,7 @@ import {
   type SemanticPipeline,
 } from '@job-fetcher/semantic-match';
 import { markJobSanitized, replaceJobRequiredSkills } from '@job-fetcher/database';
-import { categorizeRoleTitle } from '@job-fetcher/domain';
+import { categorizeRoleTitle, categorizeSeniority } from '@job-fetcher/domain';
 import { createApp } from './app';
 import type { EmbedJob } from './ingestion-runner';
 import { seedTargetRolePhrases, createTitleScopeChecker } from './role-scope';
@@ -96,6 +96,7 @@ function main() {
       sanitizedJson: JSON.stringify(sanitized),
       anchorDocument,
       roleCategory: categorizeRoleTitle(sanitized.title),
+      seniorityLevel: categorizeSeniority(sanitized.title, sanitized.experienceProfile),
     });
     const skillIds = await canonicalizeSkills(sanitized.requiredSkills);
     await replaceJobRequiredSkills(db, jobOpeningId, skillIds);
@@ -130,6 +131,8 @@ function main() {
       skillOverlapWeight: env.SKILL_OVERLAP_WEIGHT,
       roleMismatchPenalty: env.ROLE_MISMATCH_PENALTY,
       noRequiredSkillsPenalty: env.NO_REQUIRED_SKILLS_PENALTY,
+      seniorityMismatchPenalty: env.SENIORITY_MISMATCH_PENALTY,
+      minSkillsForFullConfidence: env.MIN_SKILLS_FOR_FULL_CONFIDENCE,
     },
     embedJob,
     isTitleInScope,

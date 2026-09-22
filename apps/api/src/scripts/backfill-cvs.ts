@@ -37,7 +37,7 @@ import {
   processCandidate,
   type SemanticPipeline,
 } from '@job-fetcher/semantic-match';
-import { categorizeRoleTitle } from '@job-fetcher/domain';
+import { categorizeRoleTitle, categorizeSeniority } from '@job-fetcher/domain';
 import { createSkillCanonicalizer } from '../skill-taxonomy';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -97,6 +97,7 @@ async function main() {
         sanitizedJson: JSON.stringify(sanitized),
         anchorDocument,
         roleCategory: categorizeRoleTitle(sanitized.title),
+        seniorityLevel: categorizeSeniority(sanitized.title, sanitized.experienceProfile),
       });
       ok += 1;
     } catch (err) {

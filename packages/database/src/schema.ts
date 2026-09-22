@@ -85,6 +85,7 @@ export interface CandidateTable {
   sanitized_json: string | null;
   anchor_document: string | null;
   role_category: string | null;
+  seniority_level: string | null;
   status: CandidateStatus;
   error: string | null;
   duplicate_of_id: string | null;
@@ -98,6 +99,7 @@ export interface JobEmbeddingTable {
   anchor_document: string | null;
   sanitized_json: string | null;
   role_category: string | null;
+  seniority_level: string | null;
   error: string | null;
   updated_at: string;
 }

@@ -40,6 +40,7 @@ export async function insertCandidate(
       sanitized_json: null,
       anchor_document: null,
       role_category: null,
+      seniority_level: null,
       status: 'pending',
       error: null,
       duplicate_of_id: null,
@@ -61,6 +62,7 @@ export async function markCandidateSanitized(
     sanitizedJson: string;
     anchorDocument: string;
     roleCategory: string | null;
+    seniorityLevel: string | null;
   },
 ): Promise<void> {
   await db
@@ -70,6 +72,7 @@ export async function markCandidateSanitized(
       sanitized_json: input.sanitizedJson,
       anchor_document: input.anchorDocument,
       role_category: input.roleCategory,
+      seniority_level: input.seniorityLevel,
       status: 'sanitized',
       error: null,
       updated_at: new Date().toISOString(),
@@ -98,6 +101,7 @@ export async function markCandidateDuplicate(
     sanitizedJson: string;
     anchorDocument: string;
     roleCategory: string | null;
+    seniorityLevel: string | null;
     duplicateOfId: string;
   },
 ): Promise<void> {
@@ -108,6 +112,7 @@ export async function markCandidateDuplicate(
       sanitized_json: input.sanitizedJson,
       anchor_document: input.anchorDocument,
       role_category: input.roleCategory,
+      seniority_level: input.seniorityLevel,
       duplicate_of_id: input.duplicateOfId,
       status: 'duplicate',
       error: null,

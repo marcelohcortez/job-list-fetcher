@@ -6,13 +6,14 @@ import {
   getJobById,
   getJobRequiredSkillLabels,
   getJobRoleCategories,
+  getJobSeniorityLevels,
   getSkillRelationsFor,
   getCandidate,
   listCandidates,
 } from '@job-fetcher/database';
 import { matchJobsForCandidate, type SemanticPipeline } from '@job-fetcher/semantic-match';
-import type { JobOpening, RoleCategory } from '@job-fetcher/domain';
-import { areRoleCategoriesCompatible } from '@job-fetcher/domain';
+import type { JobOpening, RoleCategory, SeniorityLevel } from '@job-fetcher/domain';
+import { areRoleCategoriesCompatible, areSeniorityLevelsCompatible } from '@job-fetcher/domain';
 
 export interface MatchesConfig {
   /** Max jobs to consider per candidate. Omit for no limit. */
@@ -47,11 +48,37 @@ export interface MatchesConfig {
    * Docs/matching_pipeline.md). Defaults to 0.75 when omitted.
    */
   noRequiredSkillsPenalty?: number;
+  /**
+   * Multiplier applied to the blended score when the job's and candidate's
+   * seniority levels (see `categorizeSeniority` in `@job-fetcher/domain`) are
+   * both known and more than one step apart - e.g. a `junior` CV against a
+   * `lead-principal` posting. Unknown levels on either side are never
+   * penalized. Added during the 2026-09-22 matching-quality audit: nothing
+   * in the scoring pipeline checked seniority level at all, so a junior CV
+   * could outscore a senior-only posting on skill/similarity overlap alone.
+   * Defaults to 0.7 when omitted.
+   */
+  seniorityMismatchPenalty?: number;
+  /**
+   * Number of required skills a job needs before `skillCoverage` is trusted
+   * at full weight. `skillCoverage` is a ratio, so a job with only 1 required
+   * skill that happens to match scores a perfect `1.0` - as strong a signal,
+   * by the raw formula, as a job where 10/10 matched - even though one
+   * lucky-looking match is far weaker evidence of real fit. Below this
+   * count, `skillOverlapWeight` is scaled down proportionally
+   * (`jobSkills.length / minSkillsForFullConfidence`) and the remainder
+   * shifts to semantic similarity, which cannot be similarly gamed by a
+   * single skill. Added during the 2026-09-22 matching-quality audit.
+   * Defaults to 3 when omitted.
+   */
+  minSkillsForFullConfidence?: number;
 }
 
 const DEFAULT_SKILL_OVERLAP_WEIGHT = 0.6;
 const DEFAULT_ROLE_MISMATCH_PENALTY = 0.5;
 const DEFAULT_NO_REQUIRED_SKILLS_PENALTY = 0.75;
+const DEFAULT_SENIORITY_MISMATCH_PENALTY = 0.7;
+const DEFAULT_MIN_SKILLS_FOR_FULL_CONFIDENCE = 3;
 
 type JobWithSimilarity = Omit<JobOpening, 'rawPayload'> & {
   similarity: number;
@@ -101,18 +128,33 @@ function publicJob(
  * either. See the 2026-09-15/16 matches-scoring discussion and
  * Docs/adr/0009.
  *
- * Two further discounts are applied on top of the skill/similarity blend
- * (ADR 0012), since neither signal above ever checks *what kind of role*
- * the job and candidate are for:
+ * Three further discounts are applied on top of the skill/similarity blend,
+ * since none of the signals above ever check *what kind* or *what level* of
+ * role the job and candidate are for, and a ratio-based skill coverage
+ * doesn't distinguish one lucky match from ten:
  *
- * - `roleMismatchPenalty` - both role categories are known and incompatible
- *   (e.g. a `design` CV against a `product-management` job). This is what
- *   catches the failure mode this ADR was written for: a Designer CV
- *   scoring 75% against a Product Manager opening purely on generic
- *   whole-document vocabulary overlap.
+ * - `roleMismatchPenalty` (ADR 0012) - both role categories are known and
+ *   incompatible (e.g. a `design` CV against a `product-management` job).
+ *   This is what catches the failure mode this ADR was written for: a
+ *   Designer CV scoring 75% against a Product Manager opening purely on
+ *   generic whole-document vocabulary overlap.
+ * - `seniorityMismatchPenalty` - both seniority levels are known and more
+ *   than one step apart (e.g. a `junior` CV against a `lead-principal`
+ *   posting). Added during the 2026-09-22 matching-quality audit: role
+ *   category checks *what kind* of role, but nothing checked *what level*.
  * - `noRequiredSkillsPenalty` - the job has zero extracted required skills,
  *   so scoring falls back to semantic similarity alone with no literal
  *   signal to check at all.
+ *
+ * A `minSkillsForFullConfidence` dampener also applies whenever a job has
+ * *some* required skills but very few: `skillCoverage` is a ratio, so 1/1
+ * looks as strong as 10/10 by the raw formula even though a single matching
+ * skill is far weaker evidence of fit. Below the threshold,
+ * `skillOverlapWeight` scales down proportionally and the shortfall goes to
+ * semantic similarity instead - see the 2026-09-22 audit note in
+ * Docs/matching_pipeline.md for the concrete case this fixes (a 1-required-
+ * skill job outranking genuinely well-matched jobs with many overlapping
+ * skills).
  */
 function blendScore(
   semanticSimilarity: number,
@@ -125,7 +167,13 @@ function blendScore(
     candidate: RoleCategory | null;
     mismatchPenalty: number;
   },
+  seniorityLevels: {
+    job: SeniorityLevel | null;
+    candidate: SeniorityLevel | null;
+    mismatchPenalty: number;
+  },
   noRequiredSkillsPenalty: number,
+  minSkillsForFullConfidence: number,
 ): {
   score: number;
   skillCoverage: number | null;
@@ -136,10 +184,17 @@ function blendScore(
   const roleMultiplier = areRoleCategoriesCompatible(roleCategories.job, roleCategories.candidate)
     ? 1
     : roleCategories.mismatchPenalty;
+  const seniorityMultiplier = areSeniorityLevelsCompatible(
+    seniorityLevels.job,
+    seniorityLevels.candidate,
+  )
+    ? 1
+    : seniorityLevels.mismatchPenalty;
+  const categoryMultiplier = roleMultiplier * seniorityMultiplier;
 
   if (jobSkills.length === 0) {
     return {
-      score: semanticSimilarity * roleMultiplier * noRequiredSkillsPenalty,
+      score: semanticSimilarity * categoryMultiplier * noRequiredSkillsPenalty,
       skillCoverage: null,
       matchedSkillCount: 0,
       matchedSkills: [],
@@ -169,8 +224,12 @@ function blendScore(
   }
 
   const skillCoverage = totalCredit / jobSkills.length;
+  const confidence = Math.min(1, jobSkills.length / minSkillsForFullConfidence);
+  const effectiveSkillOverlapWeight = skillOverlapWeight * confidence;
   const score =
-    (skillOverlapWeight * skillCoverage + (1 - skillOverlapWeight) * semanticSimilarity) * roleMultiplier;
+    (effectiveSkillOverlapWeight * skillCoverage +
+      (1 - effectiveSkillOverlapWeight) * semanticSimilarity) *
+    categoryMultiplier;
   return {
     score,
     skillCoverage,
@@ -190,6 +249,7 @@ async function matchesForCandidate(
   const candidateSkillIds = new Set(await getCandidateSkillIds(db, candidateId));
   const candidate = await getCandidate(db, candidateId);
   const candidateRoleCategory = (candidate?.role_category ?? null) as RoleCategory | null;
+  const candidateSeniorityLevel = (candidate?.seniority_level ?? null) as SeniorityLevel | null;
 
   const entries = (
     await Promise.all(
@@ -210,6 +270,7 @@ async function matchesForCandidate(
   }
   const skillRelations = await getSkillRelationsFor(db, [...jobSkillIds]);
   const jobRoleCategories = await getJobRoleCategories(db, entries.map((entry) => entry.job.id));
+  const jobSeniorityLevels = await getJobSeniorityLevels(db, entries.map((entry) => entry.job.id));
 
   const jobs: JobWithSimilarity[] = [];
   for (const { hit, job, jobSkills } of entries) {
@@ -224,7 +285,13 @@ async function matchesForCandidate(
         candidate: candidateRoleCategory,
         mismatchPenalty: config.roleMismatchPenalty ?? DEFAULT_ROLE_MISMATCH_PENALTY,
       },
+      {
+        job: (jobSeniorityLevels.get(job.id) ?? null) as SeniorityLevel | null,
+        candidate: candidateSeniorityLevel,
+        mismatchPenalty: config.seniorityMismatchPenalty ?? DEFAULT_SENIORITY_MISMATCH_PENALTY,
+      },
       config.noRequiredSkillsPenalty ?? DEFAULT_NO_REQUIRED_SKILLS_PENALTY,
+      config.minSkillsForFullConfidence ?? DEFAULT_MIN_SKILLS_FOR_FULL_CONFIDENCE,
     );
     if (score < config.minSimilarity) continue;
     jobs.push(

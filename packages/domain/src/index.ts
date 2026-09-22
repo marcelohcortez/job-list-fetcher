@@ -29,6 +29,8 @@ export {
 export { isJobEligible, JOB_TIMEZONE } from './deadline-filter';
 export { ROLE_CATEGORIES, categorizeRoleTitle, areRoleCategoriesCompatible } from './role-categories';
 export type { RoleCategory } from './role-categories';
+export { SENIORITY_LEVELS, categorizeSeniority, areSeniorityLevelsCompatible } from './seniority';
+export type { SeniorityLevel } from './seniority';
 export type { JobEligibilityResult } from './deadline-filter';
 export {
   calculateCanonicalKey,

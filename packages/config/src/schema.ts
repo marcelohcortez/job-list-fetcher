@@ -26,6 +26,8 @@ export const envSchema = z.object({
   SKILL_OVERLAP_WEIGHT: z.coerce.number().min(0).max(1).default(0.6),
   ROLE_MISMATCH_PENALTY: z.coerce.number().min(0).max(1).default(0.5),
   NO_REQUIRED_SKILLS_PENALTY: z.coerce.number().min(0).max(1).default(0.75),
+  SENIORITY_MISMATCH_PENALTY: z.coerce.number().min(0).max(1).default(0.7),
+  MIN_SKILLS_FOR_FULL_CONFIDENCE: z.coerce.number().int().positive().default(3),
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
     .default('development'),

@@ -4,7 +4,12 @@ import type { JobDb } from '../schema';
 export async function markJobSanitized(
   db: Kysely<JobDb>,
   jobOpeningId: string,
-  input: { sanitizedJson: string; anchorDocument: string; roleCategory: string | null },
+  input: {
+    sanitizedJson: string;
+    anchorDocument: string;
+    roleCategory: string | null;
+    seniorityLevel: string | null;
+  },
 ): Promise<void> {
   const now = new Date().toISOString();
   await db
@@ -15,6 +20,7 @@ export async function markJobSanitized(
       sanitized_json: input.sanitizedJson,
       anchor_document: input.anchorDocument,
       role_category: input.roleCategory,
+      seniority_level: input.seniorityLevel,
       error: null,
       updated_at: now,
     })
@@ -24,6 +30,7 @@ export async function markJobSanitized(
         sanitized_json: eb.ref('excluded.sanitized_json'),
         anchor_document: eb.ref('excluded.anchor_document'),
         role_category: eb.ref('excluded.role_category'),
+        seniority_level: eb.ref('excluded.seniority_level'),
         error: null,
         updated_at: eb.ref('excluded.updated_at'),
       })),
@@ -45,6 +52,7 @@ export async function markJobEmbeddingFailed(
       sanitized_json: null,
       anchor_document: null,
       role_category: null,
+      seniority_level: null,
       error,
       updated_at: now,
     })
@@ -73,4 +81,17 @@ export async function getJobRoleCategories(
     .where('job_opening_id', 'in', jobOpeningIds)
     .execute();
   return new Map(rows.map((row) => [row.job_opening_id, row.role_category]));
+}
+
+export async function getJobSeniorityLevels(
+  db: Kysely<JobDb>,
+  jobOpeningIds: readonly string[],
+): Promise<Map<string, string | null>> {
+  if (jobOpeningIds.length === 0) return new Map();
+  const rows = await db
+    .selectFrom('job_embeddings')
+    .select(['job_opening_id', 'seniority_level'])
+    .where('job_opening_id', 'in', jobOpeningIds)
+    .execute();
+  return new Map(rows.map((row) => [row.job_opening_id, row.seniority_level]));
 }
