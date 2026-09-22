@@ -52,7 +52,11 @@ export const PROFILE_FIELD_DESCRIPTIONS = {
     '("experience with", "familiarity with", "understanding of", ' +
     '"knowledge of", etc.) entirely. Skip any clause that names no ' +
     'specific technology at all (e.g. "understanding of software ' +
-    'development lifecycles") rather than inventing an item for it.' +
+    'development lifecycles") rather than inventing an item for it. Do ' +
+    'NOT include operating systems (e.g. "Windows", "Linux", "macOS") as ' +
+    'a skill - these are not a matching signal here. Do include bare ' +
+    'language names even when short or symbol-bearing, e.g. "C", "C#", ' +
+    '"C++" as distinct items when the source text names them.' +
     ENGLISH_NORMALIZATION_NOTE,
   softSkills:
     'Soft skills, personality traits, interpersonal/behavioral qualities, ' +

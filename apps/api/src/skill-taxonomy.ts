@@ -8,6 +8,7 @@ import {
   type JobDb,
 } from '@job-fetcher/database';
 import type { VectorStore } from '@job-fetcher/semantic-match';
+import { OS_SKILL_EXCLUSIONS } from './skill-relations-seed';
 
 export type Embed = (text: string) => Promise<number[]>;
 
@@ -37,6 +38,10 @@ export function createSkillCanonicalizer(
     for (const raw of rawSkills) {
       const normalized = normalizeSkillLabel(raw);
       if (!normalized) continue;
+      // Operating systems (Windows/Linux/macOS/...) aren't a meaningful
+      // matching signal here - drop them so they're neither credited nor
+      // penalized rather than becoming a skill that scores like any other.
+      if (OS_SKILL_EXCLUSIONS.has(normalized)) continue;
 
       const existing = await findSkillByNormalizedLabel(db, normalized);
       if (existing) {
