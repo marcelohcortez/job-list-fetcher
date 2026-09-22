@@ -30,6 +30,7 @@ export {
   getJobById,
   getSourcesForJob,
   countJobs,
+  updateJobDescription,
   ingestSourceRecord,
 } from './repositories/jobs';
 export type { JobFilter, IngestResult } from './repositories/jobs';

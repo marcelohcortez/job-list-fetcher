@@ -1,6 +1,6 @@
 export type { SourceAdapter, AdapterOptions } from './base';
-export { CinodeMarketAdapter } from './cinode-market';
-export type { CinodeMarketAdapterOptions } from './cinode-market';
+export { CinodeMarketAdapter, buildDescription as buildCinodeDescription } from './cinode-market';
+export type { CinodeMarketAdapterOptions, MarketDetail as CinodeMarketDetail } from './cinode-market';
 export { TheirStackAdapter, THEIRSTACK_DEFAULT_LOCATION } from './theirstack';
 export type { TheirStackAdapterOptions } from './theirstack';
 export {

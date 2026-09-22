@@ -63,7 +63,8 @@ export class CinodeMarketAdapter {
       for (const card of cards) {
         if (seen.has(card.id)) continue;
         seen.add(card.id);
-        records.push(this.toSourceRecord(card));
+        const detail = await this.fetchDetail(card.id);
+        records.push(this.toSourceRecord(card, detail));
       }
 
       // The first page carries the cursor in the button; fragments return it
@@ -86,7 +87,38 @@ export class CinodeMarketAdapter {
     return response;
   }
 
-  private toSourceRecord(card: MarketCard): SourceRecord {
+  /**
+   * The list/fragment endpoint only ever carries card summaries (id, title,
+   * company, location, dates) - no description or skills, which live only
+   * on each request's own detail page. Fetched once per newly-seen card, so
+   * cost stays bounded by how many *new* postings appear per run, not by
+   * page count. A detail page failing to fetch or parse degrades to a null
+   * description rather than failing the whole run - the card's summary
+   * fields are still useful without it.
+   */
+  private async fetchDetail(id: string): Promise<MarketDetail> {
+    try {
+      const response = await this.get(`${this.baseUrl}/requests/${id}`);
+      return parseDetail(await response.text());
+    } catch (err) {
+      console.warn(
+        `Cinode Market detail page for request ${id} failed to fetch - falling back to no description`,
+        err,
+      );
+      return { description: null, skills: [] };
+    }
+  }
+
+  /**
+   * Public so a one-off backfill can re-pull the detail page for a request
+   * already in the database (e.g. one ingested before this adapter fetched
+   * detail pages at all) without re-scraping the whole list.
+   */
+  fetchDetailForId(sourceJobId: string): Promise<MarketDetail> {
+    return this.fetchDetail(sourceJobId);
+  }
+
+  private toSourceRecord(card: MarketCard, detail: MarketDetail): SourceRecord {
     const candidate = {
       id: `cinode-market-${card.id}`,
       sourceName: 'cinode-market',
@@ -94,7 +126,7 @@ export class CinodeMarketAdapter {
       title: card.title,
       company: card.company,
       location: card.location,
-      description: card.description,
+      description: buildDescription(detail),
       url: `${this.baseUrl}/requests/${card.id}`,
       applicationUrl: null,
       deadline: card.deadline,
@@ -117,9 +149,50 @@ interface MarketCard {
   title: string;
   company: string;
   location: string;
-  description: string | null;
   deadline: Date | null;
   announced: Date | null;
+}
+
+export interface MarketDetail {
+  description: string | null;
+  skills: string[];
+}
+
+/** The desired-skills tags are appended as their own line rather than dropped - see `parseDetail`. */
+export function buildDescription(detail: MarketDetail): string | null {
+  const description = [
+    detail.description,
+    detail.skills.length > 0 ? `Desired skills: ${detail.skills.join(', ')}` : null,
+  ]
+    .filter((part): part is string => part != null && part !== '')
+    .join('\n\n');
+  return description || null;
+}
+
+/**
+ * A request's own page carries the body copy as rich-text HTML
+ * (`.wysiwyg-output`, `<p>`/`<br>` only - no nested divs, so a non-greedy
+ * match to the next `</div></div>` is safe) plus a "Desired skills" tag
+ * list (`.details__skill a[title]`) the market maintainers curate by hand -
+ * a cleaner signal than whatever a sanitizer LLM would extract from prose,
+ * so it's appended to the description as its own line rather than dropped.
+ */
+function parseDetail(html: string): MarketDetail {
+  const bodyMatch = html.match(
+    /<div class="wysiwyg-output">([\s\S]*?)<\/div>\s*<\/div>/,
+  );
+  const description = bodyMatch ? decodeHtml(stripTags(bodyMatch[1])) : null;
+
+  const skillsSectionMatch = html.match(
+    /<section class="details__skills">([\s\S]*?)<\/section>/,
+  );
+  const skills = skillsSectionMatch
+    ? [...skillsSectionMatch[1].matchAll(/class="details__skill">\s*<a[^>]*title="([^"]*)"/g)].map(
+        (match) => decodeHtml(match[1]),
+      )
+    : [];
+
+  return { description: description || null, skills };
 }
 
 const CARD_DELIMITER = 'requests-list__card"';
@@ -137,7 +210,6 @@ function parseCards(html: string): MarketCard[] {
       ),
       company: textOf(chunk, /card-company list__text[^>]*>([\s\S]*?)<\/span>/),
       location: parseLocation(chunk),
-      description: null,
       deadline: parseCardDate(chunk, 'Deadline'),
       announced: parseCardDate(chunk, 'Announced'),
     });

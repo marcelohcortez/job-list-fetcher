@@ -250,6 +250,18 @@ export function getSourcesForJob(db: Kysely<JobDb>, jobOpeningId: string) {
     .execute();
 }
 
+export async function updateJobDescription(
+  db: Kysely<JobDb>,
+  id: string,
+  description: string | null,
+): Promise<void> {
+  await db
+    .updateTable('job_openings')
+    .set({ description, updated_at: new Date().toISOString() })
+    .where('id', '=', id)
+    .execute();
+}
+
 export function countJobs(db: Kysely<JobDb>): Promise<number> {
   return db
     .selectFrom('job_openings')

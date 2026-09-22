@@ -42,6 +42,26 @@ function respond(body: string, nextCursor?: string) {
   return new Response(body, { status: 200, headers });
 }
 
+/** Shaped like a real `/requests/<id>` detail page. */
+function detailPage({
+  description = '<p>Line one.</p><p>Line two.</p>',
+  skills = ['GitOps', 'Docker'],
+}: { description?: string | null; skills?: string[] } = {}) {
+  const skillTags = skills
+    .map(
+      (skill) =>
+        `<div class="details__skill"><a href="/x" title="${skill}">${skill}</a></div>`,
+    )
+    .join('');
+  return `<html><body><div class="wysiwyg">
+    <div class="wysiwyg-output">${description ?? ''}</div>
+  </div>
+  <section class="details__skills"><h4>Desired skills</h4>
+    <div class="details__skills--wrapper">${skillTags}</div>
+  </section>
+  </body></html>`;
+}
+
 describe('CinodeMarketAdapter', () => {
   it('maps a listing to a validated SourceRecord', async () => {
     const fetcher = vi.fn(async () => respond(page([card()])));
@@ -82,7 +102,11 @@ describe('CinodeMarketAdapter', () => {
     const urls: string[] = [];
     const fetcher = vi.fn(async (url: string) => {
       urls.push(url);
-      if (urls.length === 1) {
+      // Each new card triggers a detail-page fetch before the next list
+      // page is requested, so detail requests (/requests/<id>) interleave
+      // with list requests (/ and /?nextCursor=...) in the url log.
+      if (url.includes('/requests/')) return respond('<html></html>');
+      if (urls.filter((u) => !u.includes('/requests/')).length === 1) {
         return respond(page([card({ id: '1' })], 'cursorA'), 'cursorA');
       }
       return respond(page([card({ id: '2' })]));
@@ -93,7 +117,7 @@ describe('CinodeMarketAdapter', () => {
     }).fetchJobs();
 
     expect(records.map((r) => r.sourceJobId)).toEqual(['1', '2']);
-    expect(urls[1]).toBe('https://market.cinode.com/?nextCursor=cursorA');
+    expect(urls).toContain('https://market.cinode.com/?nextCursor=cursorA');
   });
 
   it('does not emit the same listing twice across pages', async () => {
@@ -146,6 +170,41 @@ describe('CinodeMarketAdapter', () => {
     warn.mockRestore();
   });
 
+  it('fetches each new card\'s detail page for its description and desired skills', async () => {
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.endsWith('/requests/22485')) return respond(detailPage());
+      return respond(page([card()]));
+    });
+    const records = await new CinodeMarketAdapter({
+      rateLimitMs: 0,
+      fetcher,
+    }).fetchJobs();
+
+    expect(records[0].description).toBe(
+      'Line one. Line two.\n\nDesired skills: GitOps, Docker',
+    );
+  });
+
+  it('falls back to no description when a detail page fails to fetch', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.includes('/requests/')) return new Response('nope', { status: 500 });
+      return respond(page([card()]));
+    });
+    const records = await new CinodeMarketAdapter({
+      rateLimitMs: 0,
+      fetcher,
+    }).fetchJobs();
+
+    expect(records).toHaveLength(1);
+    expect(records[0].description).toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('detail page for request 22485'),
+      expect.anything(),
+    );
+    warn.mockRestore();
+  });
+
   it('throws on non-OK responses', async () => {
     const fetcher = vi.fn(async () => new Response('nope', { status: 503 }));
     await expect(
@@ -155,7 +214,8 @@ describe('CinodeMarketAdapter', () => {
 
   it('stops at maxPages so a broken cursor cannot loop forever', async () => {
     let id = 0;
-    const fetcher = vi.fn(async () => {
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.includes('/requests/')) return respond('<html></html>');
       id += 1;
       return respond(page([card({ id: String(id) })], 'c'), 'c');
     });
@@ -164,6 +224,9 @@ describe('CinodeMarketAdapter', () => {
       maxPages: 3,
       fetcher,
     }).fetchJobs();
-    expect(fetcher).toHaveBeenCalledTimes(3);
+    const listCalls = fetcher.mock.calls.filter(
+      (call) => !(call[0] as string).includes('/requests/'),
+    );
+    expect(listCalls).toHaveLength(3);
   });
 });
