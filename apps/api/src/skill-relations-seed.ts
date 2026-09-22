@@ -113,7 +113,50 @@ export const SKILL_RELATION_SEEDS: readonly SkillRelationSeed[] = [
   { a: 'MySQL', b: 'Relational databases', type: 'related', weight: 0.7 },
   { a: 'PostgreSQL', b: 'Database design fundamentals', type: 'related', weight: 0.5 },
   { a: 'MySQL', b: 'Database design fundamentals', type: 'related', weight: 0.5 },
+
+  // Same-skill naming variants - the normalizer (normalizeSkillLabel) only
+  // collapses formatting (case/punctuation), so "React" and "React.js" still
+  // normalize to different strings ("react" vs "react js") and would
+  // otherwise be scored as unrelated skills. Full equivalence (weight 1.0)
+  // rather than partial credit, since these are literally the same
+  // technology under a different spelling.
+  { a: 'Go', b: 'Golang', type: 'equivalent', weight: 1.0 },
+  { a: 'AWS', b: 'Amazon Web Services', type: 'equivalent', weight: 1.0 },
+  { a: 'React', b: 'Reactjs', type: 'equivalent', weight: 1.0 },
+  { a: 'React', b: 'React.js', type: 'equivalent', weight: 1.0 },
+  { a: 'Reactjs', b: 'React.js', type: 'equivalent', weight: 1.0 },
+  { a: 'Node', b: 'Node.js', type: 'equivalent', weight: 1.0 },
+  { a: 'Node', b: 'Nodejs', type: 'equivalent', weight: 1.0 },
+  { a: 'Node.js', b: 'Nodejs', type: 'equivalent', weight: 1.0 },
+  { a: 'Vue', b: 'Vue.js', type: 'equivalent', weight: 1.0 },
+  { a: 'Vue', b: 'Vuejs', type: 'equivalent', weight: 1.0 },
+  { a: 'Vue.js', b: 'Vuejs', type: 'equivalent', weight: 1.0 },
+  { a: 'Angular', b: 'Angular.js', type: 'equivalent', weight: 1.0 },
+  { a: 'Angular', b: 'Angularjs', type: 'equivalent', weight: 1.0 },
+  { a: 'Angular.js', b: 'Angularjs', type: 'equivalent', weight: 1.0 },
+  { a: 'Spring Boot', b: 'Boot', type: 'equivalent', weight: 1.0 },
+  { a: '.NET', b: 'Net', type: 'equivalent', weight: 1.0 },
+  { a: '.NET', b: '.NET Core', type: 'equivalent', weight: 1.0 },
+  { a: 'Net', b: '.NET Core', type: 'equivalent', weight: 1.0 },
+  { a: 'Advanced SQL', b: 'SQL', type: 'equivalent', weight: 1.0 },
 ];
+
+/**
+ * Skills that describe an operating system rather than a technical
+ * competency (e.g. extracted from a stray "Windows/Linux" clause in a job
+ * ad). These are excluded from matching entirely in
+ * `createSkillCanonicalizer` - neither credited nor penalized - since OS
+ * familiarity isn't a meaningful signal to score candidates on here.
+ */
+export const OS_SKILL_EXCLUSIONS: ReadonlySet<string> = new Set([
+  'windows',
+  'linux',
+  'mac',
+  'macos',
+  'mac os',
+  'os x',
+  'unix',
+]);
 
 function normalize(label: string): string {
   return normalizeSkillLabel(label);
