@@ -21,6 +21,8 @@ export const DEFAULT_TEAMTAILOR_BOARDS: readonly TeamtailorBoard[] = [
   { host: 'justergroupab.teamtailor.com', name: 'Justera Group' },
   { host: 'combine.teamtailor.com', name: 'Combine' },
   { host: 'job.novacura.com', name: 'Novacura' },
+  { host: 'career.diadrom.se', name: 'Diadrom' },
+  { host: 'ledigajobb.futuriapeople.se', name: 'Futuria' },
 ];
 
 /**
