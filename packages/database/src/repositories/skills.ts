@@ -43,6 +43,18 @@ export async function findSkillByNormalizedLabel(
   return row ?? null;
 }
 
+export async function skillExists(
+  db: Kysely<JobDb>,
+  id: string,
+): Promise<boolean> {
+  const row = await db
+    .selectFrom('skills')
+    .select('id')
+    .where('id', '=', id)
+    .executeTakeFirst();
+  return row != null;
+}
+
 /** Replaces the full set of a job opening's required skills. */
 export async function replaceJobRequiredSkills(
   db: Kysely<JobDb>,

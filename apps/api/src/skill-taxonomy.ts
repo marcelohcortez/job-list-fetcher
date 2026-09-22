@@ -4,6 +4,7 @@ import { normalizeSkillLabel } from '@job-fetcher/domain';
 import {
   findSkillByNormalizedLabel,
   insertSkillIfNew,
+  skillExists,
   type JobDb,
 } from '@job-fetcher/database';
 import type { VectorStore } from '@job-fetcher/semantic-match';
@@ -46,8 +47,15 @@ export function createSkillCanonicalizer(
       const embedding = await embed(normalized);
       const nearest = await vectorStore.queryNearestSkill(embedding);
       if (nearest && nearest.similarity >= minSimilarity) {
-        skillIds.add(nearest.id);
-        continue;
+        // The vector store and `skills` are two separate systems that can
+        // drift (e.g. the sqlite db got recreated while Chroma's collection
+        // persisted); trusting a stale id here would insert a dangling
+        // `skill_id` and blow up the FK on job_required_skills/
+        // candidate_skills. Confirm the row still exists before reusing it.
+        if (await skillExists(db, nearest.id)) {
+          skillIds.add(nearest.id);
+          continue;
+        }
       }
 
       const inserted = await insertSkillIfNew(db, {

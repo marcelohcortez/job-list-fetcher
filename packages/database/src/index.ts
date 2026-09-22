@@ -69,6 +69,7 @@ export type { NewTargetRolePhrase } from './repositories/target-role-phrases';
 export {
   insertSkillIfNew,
   findSkillByNormalizedLabel,
+  skillExists,
   replaceJobRequiredSkills,
   replaceCandidateSkills,
   getJobRequiredSkillIds,
