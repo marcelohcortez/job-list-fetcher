@@ -9,6 +9,7 @@ export type CandidateSummary = {
   sizeBytes: number;
   wordCount: number;
   candidateName: string | null;
+  candidateTitle: string | null;
   status: CandidateStatus;
   error: string | null;
   duplicateOfId: string | null;
@@ -37,6 +38,7 @@ export async function insertCandidate(
       pdf_bytes: input.pdfBytes,
       extracted_text: input.extractedText,
       candidate_name: null,
+      candidate_title: null,
       sanitized_json: null,
       anchor_document: null,
       role_category: null,
@@ -59,6 +61,7 @@ export async function markCandidateSanitized(
   id: string,
   input: {
     candidateName: string;
+    candidateTitle: string;
     sanitizedJson: string;
     anchorDocument: string;
     roleCategory: string | null;
@@ -69,6 +72,7 @@ export async function markCandidateSanitized(
     .updateTable('candidates')
     .set({
       candidate_name: input.candidateName,
+      candidate_title: input.candidateTitle,
       sanitized_json: input.sanitizedJson,
       anchor_document: input.anchorDocument,
       role_category: input.roleCategory,
@@ -98,6 +102,7 @@ export async function markCandidateDuplicate(
   id: string,
   input: {
     candidateName: string;
+    candidateTitle: string;
     sanitizedJson: string;
     anchorDocument: string;
     roleCategory: string | null;
@@ -109,6 +114,7 @@ export async function markCandidateDuplicate(
     .updateTable('candidates')
     .set({
       candidate_name: input.candidateName,
+      candidate_title: input.candidateTitle,
       sanitized_json: input.sanitizedJson,
       anchor_document: input.anchorDocument,
       role_category: input.roleCategory,
@@ -148,9 +154,18 @@ export async function getCandidate(
     .executeTakeFirst();
 }
 
-export async function findSanitizedCandidateByName(
+/**
+ * A second CV only counts as a duplicate of an existing one when both the
+ * name AND the sanitized title match - e.g. two CVs for "Fredrik Carlsson"
+ * are distinct candidates if one is a "Backend Developer" profile and the
+ * other a "Solutions Architect" profile, and should both be kept rather
+ * than the second silently overwriting the first via
+ * `markCandidateDuplicate`.
+ */
+export async function findSanitizedCandidateByNameAndTitle(
   db: Kysely<JobDb>,
   candidateName: string,
+  candidateTitle: string,
   excludeId: string,
 ): Promise<CandidateTable | undefined> {
   return db
@@ -159,6 +174,7 @@ export async function findSanitizedCandidateByName(
     .where('status', '=', 'sanitized')
     .where('id', '!=', excludeId)
     .where(sql`lower(candidate_name)`, '=', candidateName.trim().toLowerCase())
+    .where(sql`lower(candidate_title)`, '=', candidateTitle.trim().toLowerCase())
     .executeTakeFirst();
 }
 
@@ -194,6 +210,7 @@ export function toCandidateSummary(row: CandidateTable): CandidateSummary {
     sizeBytes: row.size_bytes,
     wordCount: words,
     candidateName: row.candidate_name,
+    candidateTitle: row.candidate_title,
     status: row.status,
     error: row.error,
     duplicateOfId: row.duplicate_of_id,

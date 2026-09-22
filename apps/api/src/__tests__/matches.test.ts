@@ -55,6 +55,7 @@ async function addSanitizedCandidate(
   });
   await markCandidateSanitized(db, candidate.id, {
     candidateName: name,
+    candidateTitle: 'Backend Developer',
     sanitizedJson: '{}',
     anchorDocument: 'JOB TITLE: Backend Developer',
     roleCategory,

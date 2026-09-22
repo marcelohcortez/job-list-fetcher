@@ -320,6 +320,7 @@ describe('repositories', () => {
 
     await markCandidateSanitized(db, created.id, {
       candidateName: 'Anna Andersson',
+      candidateTitle: 'Software Developer',
       sanitizedJson: JSON.stringify({ title: 'Software Developer' }),
       anchorDocument: 'JOB TITLE: Software Developer',
       roleCategory: 'engineering',

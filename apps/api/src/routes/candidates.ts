@@ -3,7 +3,7 @@ import type { Kysely } from 'kysely';
 import type { JobDb } from '@job-fetcher/database';
 import {
   deleteCandidate,
-  findSanitizedCandidateByName,
+  findSanitizedCandidateByNameAndTitle,
   getCandidate,
   insertCandidate,
   listCandidates,
@@ -58,14 +58,16 @@ async function sanitizeCandidate(
     const roleCategory = categorizeRoleTitle(sanitized.title);
     const seniorityLevel = categorizeSeniority(sanitized.title, sanitized.experienceProfile);
 
-    const existing = await findSanitizedCandidateByName(
+    const existing = await findSanitizedCandidateByNameAndTitle(
       db,
       sanitized.candidateName,
+      sanitized.title,
       candidateId,
     );
     if (existing) {
       await markCandidateDuplicate(db, candidateId, {
         candidateName: sanitized.candidateName,
+        candidateTitle: sanitized.title,
         sanitizedJson: JSON.stringify(sanitized),
         anchorDocument,
         roleCategory,
@@ -75,6 +77,7 @@ async function sanitizeCandidate(
     } else {
       await markCandidateSanitized(db, candidateId, {
         candidateName: sanitized.candidateName,
+        candidateTitle: sanitized.title,
         sanitizedJson: JSON.stringify(sanitized),
         anchorDocument,
         roleCategory,

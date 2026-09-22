@@ -156,6 +156,38 @@ describe('duplicate candidate names', () => {
     expect(second.data.duplicateOfId).toBe(first.data.id);
   });
 
+  it('keeps both CVs as separate sanitized profiles when the same name has a different title', async () => {
+    const semantic = fakeSemantic();
+    const app = testApp(semantic);
+
+    const form1 = new FormData();
+    form1.append('file', pdfFile('anna-backend.pdf'));
+    const first = await (
+      await app.request('/api/candidates', { method: 'POST', body: form1 })
+    ).json();
+    expect(first.data.status).toBe('sanitized');
+
+    semantic.sanitizer.sanitizeCandidate = vi.fn().mockResolvedValue({
+      candidateName: 'Anna Andersson',
+      title: 'Engineering Manager',
+      requiredSkills: ['Leadership', 'Roadmapping'],
+      softSkills: [],
+      experienceProfile: '10 years',
+      coreResponsibilities: ['led a backend team'],
+    });
+
+    const form2 = new FormData();
+    form2.append('file', pdfFile('anna-em.pdf'));
+    const second = await (
+      await app.request('/api/candidates', { method: 'POST', body: form2 })
+    ).json();
+    expect(second.data.status).toBe('sanitized');
+    expect(second.data.candidateName).toBe('Anna Andersson');
+
+    const list = await (await app.request('/api/candidates')).json();
+    expect(list.data.filter((c: { status: string }) => c.status === 'sanitized')).toHaveLength(2);
+  });
+
   it('resolves a duplicate by ignoring the new upload', async () => {
     const semantic = fakeSemantic();
     const app = testApp(semantic);

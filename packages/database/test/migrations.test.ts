@@ -54,15 +54,21 @@ describe('migrations', () => {
       const candidatesTable = jobColumns.find((t) => t.name === 'candidates');
       expect(candidatesTable?.columns.some((c) => c.name === 'role_category')).toBe(true);
       expect(candidatesTable?.columns.some((c) => c.name === 'seniority_level')).toBe(true);
+      expect(candidatesTable?.columns.some((c) => c.name === 'candidate_title')).toBe(true);
       const userJobMarksTable = jobColumns.find((t) => t.name === 'user_job_marks');
       expect(userJobMarksTable?.columns.some((c) => c.name === 'seen_at')).toBe(true);
 
       const indexes = jobColumns.flatMap((t) => t.columns).length;
       expect(indexes).toBeGreaterThan(0);
 
-      // 012-seniority-level's `down` is a no-op (same SQLite DROP COLUMN
-      // caveat as 009-role-categories), so this rollback removes only the
-      // migration record - job_sent_cvs is still the next table to go.
+      // 013-candidate-title's and 012-seniority-level's `down` are both
+      // no-ops (same SQLite DROP COLUMN caveat as 009-role-categories), so
+      // these rollbacks remove only their migration records - job_sent_cvs
+      // is still the next table to go.
+      await rollbackMigrations(db);
+      const afterCandidateTitle = await db.introspection.getTables();
+      expect(afterCandidateTitle.map((t) => t.name)).toContain('job_sent_cvs');
+
       await rollbackMigrations(db);
       const afterSeniorityLevel = await db.introspection.getTables();
       expect(afterSeniorityLevel.map((t) => t.name)).toContain('job_sent_cvs');

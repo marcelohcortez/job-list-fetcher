@@ -49,7 +49,7 @@ export {
   markCandidateDuplicate,
   resolveCandidateDuplicate,
   getCandidate,
-  findSanitizedCandidateByName,
+  findSanitizedCandidateByNameAndTitle,
   listCandidates,
   deleteCandidate,
   toCandidateSummary,

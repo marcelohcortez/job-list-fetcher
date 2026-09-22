@@ -35,6 +35,9 @@ export function CandidateList({
         <li key={candidate.id} className="candidate">
           <div className="candidate-info">
             <strong>{candidate.candidateName ?? candidate.fileName}</strong>
+            {candidate.candidateTitle && (
+              <span className="muted">{candidate.candidateTitle}</span>
+            )}
             <span className={`status status-${candidate.status}`}>
               {STATUS_LABEL[candidate.status]}
             </span>
@@ -55,7 +58,7 @@ export function CandidateList({
           {candidate.status === 'duplicate' && candidate.duplicateOfId && (
             <div className="warning" role="alert">
               <p>
-                Same name as an existing CV,{' '}
+                Same name and role as an existing CV,{' '}
                 <strong>
                   {byId.get(candidate.duplicateOfId)?.fileName ??
                     'an existing candidate'}

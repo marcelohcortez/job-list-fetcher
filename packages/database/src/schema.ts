@@ -82,6 +82,7 @@ export interface CandidateTable {
   pdf_bytes: Uint8Array | null;
   extracted_text: string;
   candidate_name: string | null;
+  candidate_title: string | null;
   sanitized_json: string | null;
   anchor_document: string | null;
   role_category: string | null;

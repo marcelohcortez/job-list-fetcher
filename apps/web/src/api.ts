@@ -78,6 +78,7 @@ export interface Candidate {
   sizeBytes: number;
   wordCount: number;
   candidateName: string | null;
+  candidateTitle: string | null;
   status: CandidateStatus;
   error: string | null;
   duplicateOfId: string | null;

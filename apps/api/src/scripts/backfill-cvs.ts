@@ -94,6 +94,7 @@ async function main() {
       await replaceCandidateSkills(db, candidate.id, skillIds);
       await markCandidateSanitized(db, candidate.id, {
         candidateName: sanitized.candidateName,
+        candidateTitle: sanitized.title,
         sanitizedJson: JSON.stringify(sanitized),
         anchorDocument,
         roleCategory: categorizeRoleTitle(sanitized.title),
