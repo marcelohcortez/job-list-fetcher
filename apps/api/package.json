@@ -9,7 +9,8 @@
     "backfill:skills": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/backfill-skills.ts",
     "backfill:cvs": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/backfill-cvs.ts",
     "backfill:cinode-descriptions": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/backfill-cinode-descriptions.ts",
-    "repair:skill-normalization": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/repair-skill-normalization.ts"
+    "repair:skill-normalization": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/repair-skill-normalization.ts",
+    "purge:stale-jobs": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/purge-stale-jobs.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.0",

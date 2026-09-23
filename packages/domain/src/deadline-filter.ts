@@ -12,6 +12,7 @@ export function isJobEligible(
   deadline: Date | null | undefined,
   status: JobStatus,
   now?: Date,
+  publishedAt?: Date | null,
 ): JobEligibilityResult {
   const current = DateTime.fromJSDate(now ?? new Date(), {
     zone: JOB_TIMEZONE,
@@ -23,6 +24,14 @@ export function isJobEligible(
 
   if (status === 'closed') {
     return { isEligible: false, reason: 'Job status is closed' };
+  }
+
+  if (publishedAt) {
+    const jobPublishedAt = DateTime.fromJSDate(publishedAt, { zone: JOB_TIMEZONE });
+    const publishedCutoff = current.minus({ months: 6 });
+    if (jobPublishedAt < publishedCutoff) {
+      return { isEligible: false, reason: 'Published more than 6 months ago' };
+    }
   }
 
   if (!jobDeadline) {
