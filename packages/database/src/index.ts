@@ -16,6 +16,7 @@ export type {
   SkillRelationTable,
   SkillRelationType,
   JobSentCvTable,
+  AppConfigTable,
 } from './schema';
 export {
   openSqlite,
@@ -80,9 +81,16 @@ export {
 export type { NewSkill, JobRequiredSkillLabel } from './repositories/skills';
 export {
   insertSkillRelationIfNew,
+  upsertSkillRelation,
   getSkillRelationsFor,
 } from './repositories/skill-relations';
 export type {
   NewSkillRelation,
   SkillRelationPartner,
 } from './repositories/skill-relations';
+export {
+  listAppConfig,
+  getAppConfig,
+  setAppConfig,
+  deleteAppConfig,
+} from './repositories/config';

@@ -111,6 +111,23 @@ describe('createSkillCanonicalizer', () => {
     expect(vectorStore.upsertSkill).toHaveBeenCalled();
   });
 
+  it('folds any "CI/CD ..." phrasing onto the canonical CI/CD skill without an embedding round trip', async () => {
+    const vectorStore = fakeVectorStore();
+    const embed = vi.fn().mockResolvedValue([0.1, 0.2]);
+    const canonicalize = createSkillCanonicalizer(db, vectorStore, embed, 0.82);
+
+    const [cicdId] = await canonicalize(['CI/CD']);
+    embed.mockClear();
+
+    const ids = await canonicalize([
+      'CI/CD Workflows',
+      'CI/CD pipelines',
+      'Familiarity with GitLab CI/CD',
+    ]);
+    expect(ids).toEqual([cicdId]);
+    expect(embed).not.toHaveBeenCalled();
+  });
+
   it('de-duplicates ids across multiple raw skills that resolve to the same skill', async () => {
     const vectorStore = fakeVectorStore();
     const embed = vi.fn().mockResolvedValue([0.1, 0.2]);

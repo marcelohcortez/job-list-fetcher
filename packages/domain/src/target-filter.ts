@@ -1,12 +1,12 @@
 import { normalizeLocation } from './location-matcher';
-import { TARGET_ROLES } from './target-roles';
+import { getTargetRoles } from './target-roles';
 
 function normalizeTitle(value: string): string {
   if (!value) return '';
   return value
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[̀-ͯ]/g, '')
     .replace(/[-–—/_&]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -35,8 +35,10 @@ function escapeRegExp(value: string): string {
  * Only applied when the remaining phrase still has 2+ words, so roles like
  * "Technical Lead" (which would degrade to the overly generic "Technical")
  * keep requiring the full phrase.
+ * This is the built-in default - the live set is `getGenericTitleSuffixes()`
+ * below, which the Configuration screen can override.
  */
-const GENERIC_TITLE_SUFFIXES = new Set([
+export const DEFAULT_GENERIC_TITLE_SUFFIXES: readonly string[] = [
   'specialist',
   'manager',
   'lead',
@@ -45,29 +47,54 @@ const GENERIC_TITLE_SUFFIXES = new Set([
   'architect',
   'consultant',
   'analyst',
-]);
+];
 
-const TARGET_TITLE_PATTERNS: readonly RegExp[] = TARGET_ROLES.map((role) => {
-  const phrase = canonicalizeCompounds(normalizeTitle(role));
-  const words = phrase.split(' ');
-  const lastWord = words[words.length - 1];
-  if (words.length > 2 && GENERIC_TITLE_SUFFIXES.has(lastWord)) {
-    const corePhrase = words.slice(0, -1).join(' ');
-    const otherSuffixes = [...GENERIC_TITLE_SUFFIXES]
-      .filter((suffix) => suffix !== lastWord)
-      .map(escapeRegExp)
-      .join('|');
-    // Core phrase followed by nothing, or by its own suffix - but not by a
-    // *different* generic suffix, which would mean a different role
-    // (e.g. "Customer Success Specialist" must not match "Customer Success
-    // Engineer"'s pattern just because "Customer Success" is a substring).
-    return new RegExp(
-      `\\b${escapeRegExp(corePhrase)}\\b(?!\\s+(?:${otherSuffixes})\\b)(?:\\s+${escapeRegExp(lastWord)}\\b)?`,
-      'i',
-    );
-  }
-  return new RegExp(`\\b${escapeRegExp(phrase)}\\b`, 'i');
-});
+let genericTitleSuffixes = new Set(DEFAULT_GENERIC_TITLE_SUFFIXES);
+
+export function getGenericTitleSuffixes(): readonly string[] {
+  return [...genericTitleSuffixes];
+}
+
+/** Overrides the generic-suffix set and recompiles the title patterns that depend on it. */
+export function setGenericTitleSuffixes(suffixes: readonly string[]): void {
+  genericTitleSuffixes = new Set(suffixes);
+  recompileTargetTitlePatterns();
+}
+
+function compileTargetTitlePatterns(): RegExp[] {
+  return getTargetRoles().map((role) => {
+    const phrase = canonicalizeCompounds(normalizeTitle(role));
+    const words = phrase.split(' ');
+    const lastWord = words[words.length - 1];
+    if (words.length > 2 && genericTitleSuffixes.has(lastWord)) {
+      const corePhrase = words.slice(0, -1).join(' ');
+      const otherSuffixes = [...genericTitleSuffixes]
+        .filter((suffix) => suffix !== lastWord)
+        .map(escapeRegExp)
+        .join('|');
+      // Core phrase followed by nothing, or by its own suffix - but not by a
+      // *different* generic suffix, which would mean a different role
+      // (e.g. "Customer Success Specialist" must not match "Customer Success
+      // Engineer"'s pattern just because "Customer Success" is a substring).
+      return new RegExp(
+        `\\b${escapeRegExp(corePhrase)}\\b(?!\\s+(?:${otherSuffixes})\\b)(?:\\s+${escapeRegExp(lastWord)}\\b)?`,
+        'i',
+      );
+    }
+    return new RegExp(`\\b${escapeRegExp(phrase)}\\b`, 'i');
+  });
+}
+
+let targetTitlePatterns: RegExp[] = compileTargetTitlePatterns();
+
+/**
+ * Recompiles the compiled title-match patterns from the current target-role
+ * list and generic-suffix set. Call after `setTargetRoles`, since that lives
+ * in a separate module and doesn't trigger this itself.
+ */
+export function recompileTargetTitlePatterns(): void {
+  targetTitlePatterns = compileTargetTitlePatterns();
+}
 
 /**
  * Whether a listing title matches one of the platform's target roles.
@@ -77,7 +104,7 @@ const TARGET_TITLE_PATTERNS: readonly RegExp[] = TARGET_ROLES.map((role) => {
 export function matchesTargetTitle(title: string): boolean {
   const normalized = canonicalizeCompounds(normalizeTitle(title));
   if (!normalized) return false;
-  return TARGET_TITLE_PATTERNS.some((pattern) => pattern.test(normalized));
+  return targetTitlePatterns.some((pattern) => pattern.test(normalized));
 }
 
 /**
@@ -93,12 +120,29 @@ export function matchesTargetLocation(location: string): boolean {
   const hasRemote = /\bremote\b/.test(normalized);
   const hasEurope = /\b(europe|emea|europa|european|eu)\b/i.test(normalized);
   if (!hasRemote && !hasEurope) return false;
-  if (hasRemote && NON_EMEA_LOCATION_RE.test(normalized)) return false;
+  if (hasRemote && nonEmeaLocationRe.test(normalized)) return false;
   return true;
 }
 
-const NON_EMEA_LOCATION_RE =
-  /\b(us|usa|united states|americas?\b|canada|mexico|brazil|argentina|chile|colombia|peru|uruguay|venezuela|latam|latin america|apac|asia|india|japan|china|singapore|indonesia|philippines|australia|new zealand|anz|africa|mena|dubai|mid[ -]?east|south africa|israel|tel aviv|saarc|bangalore|bangaluru|chennai|mumbai|new delhi|sydney|melbourne|sao paulo)\b|alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|west virginia|wisconsin|wyoming|ontario|quebec|alberta|manitoba|saskatchewan|toronto|vancouver|ottawa|montreal|calgary|dallas|houston|austin|seattle|chicago|boston|san francisco|los angeles|santa monica|philadelphia|raleigh|princeton|madison|columbus|kansas city|miami|atlanta|denver|portland|boulder|salt lake|las vegas|palo alto|mountain view|anchor[a-z]*|honolulu|district of columbia|\b(al|ak|az|ar|ca|co|ct|de|fl|ga|hi|id|il|in|ia|ks|ky|la|me|md|ma|mi|mn|ms|mo|mt|ne|nv|nh|nj|nm|ny|nc|nd|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|vt|va|wa|wv|wi|wy|dc)\b/i;
+/**
+ * Source (no delimiters/flags) of the regex used to reject remote postings
+ * tied to a non-European country, region or city. This is the built-in
+ * default - the live pattern is `getNonEmeaLocationPattern()` below, which
+ * the Configuration screen can override.
+ */
+export const DEFAULT_NON_EMEA_LOCATION_PATTERN =
+  '\\b(us|usa|united states|americas?\\b|canada|mexico|brazil|argentina|chile|colombia|peru|uruguay|venezuela|latam|latin america|apac|asia|india|japan|china|singapore|indonesia|philippines|australia|new zealand|anz|africa|mena|dubai|mid[ -]?east|south africa|israel|tel aviv|saarc|bangalore|bangaluru|chennai|mumbai|new delhi|sydney|melbourne|sao paulo)\\b|alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|west virginia|wisconsin|wyoming|ontario|quebec|alberta|manitoba|saskatchewan|toronto|vancouver|ottawa|montreal|calgary|dallas|houston|austin|seattle|chicago|boston|san francisco|los angeles|santa monica|philadelphia|raleigh|princeton|madison|columbus|kansas city|miami|atlanta|denver|portland|boulder|salt lake|las vegas|palo alto|mountain view|anchor[a-z]*|honolulu|district of columbia|\\b(al|ak|az|ar|ca|co|ct|de|fl|ga|hi|id|il|in|ia|ks|ky|la|me|md|ma|mi|mn|ms|mo|mt|ne|nv|nh|nj|nm|ny|nc|nd|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|vt|va|wa|wv|wi|wy|dc)\\b';
+
+let nonEmeaLocationRe = new RegExp(DEFAULT_NON_EMEA_LOCATION_PATTERN, 'i');
+
+export function getNonEmeaLocationPattern(): string {
+  return nonEmeaLocationRe.source;
+}
+
+/** Overrides the non-EMEA location regex. Throws if `source` isn't a valid pattern. */
+export function setNonEmeaLocationPattern(source: string): void {
+  nonEmeaLocationRe = new RegExp(source, 'i');
+}
 
 export function isJobInScope(title: string, location: string): boolean {
   return matchesTargetTitle(title) && matchesTargetLocation(location);

@@ -149,6 +149,12 @@ export interface JobSentCvTable {
   sent_at: string;
 }
 
+export interface AppConfigTable {
+  key: string;
+  value: string;
+  updated_at: string;
+}
+
 export interface JobDb {
   job_openings: JobOpeningsTable;
   source_records: SourceRecordsTable;
@@ -162,4 +168,5 @@ export interface JobDb {
   candidate_skills: CandidateSkillTable;
   skill_relations: SkillRelationTable;
   job_sent_cvs: JobSentCvTable;
+  app_config: AppConfigTable;
 }

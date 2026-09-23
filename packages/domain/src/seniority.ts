@@ -29,14 +29,40 @@ function normalize(value: string): string {
  * Engineer" must match `lead-principal` before the bare "engineer" pattern
  * elsewhere would even get a chance to (there is no such catch-all here, but
  * "senior" must still come after "lead"/"principal" so e.g. "Senior
- * Principal Engineer" lands on the more specific level).
+ * Principal Engineer" lands on the more specific level). This is the
+ * built-in default - the live, editable order/patterns are
+ * `getTitleLevelPatternSources()` below, which the Configuration screen can
+ * override (reordering included).
  */
-const TITLE_LEVEL_PATTERNS: readonly (readonly [SeniorityLevel, RegExp])[] = [
-  ['lead-principal', /\b(principal|staff|distinguished|chief|head of|\blead\b|tech lead|techlead)\b/],
-  ['senior', /\b(senior|\bsr\b)\b/],
-  ['junior', /\b(junior|\bjr\b|graduate|trainee|intern|entry level)\b/],
-  ['mid', /\b(mid level|mid senior|intermediate|associate)\b/],
+export const DEFAULT_TITLE_LEVEL_PATTERN_SOURCES: readonly (readonly [SeniorityLevel, string])[] = [
+  ['lead-principal', '\\b(principal|staff|distinguished|chief|head of|\\blead\\b|tech lead|techlead)\\b'],
+  ['senior', '\\b(senior|\\bsr\\b)\\b'],
+  ['junior', '\\b(junior|\\bjr\\b|graduate|trainee|intern|entry level)\\b'],
+  ['mid', '\\b(mid level|mid senior|intermediate|associate)\\b'],
 ];
+
+function compileTitleLevelPatterns(
+  sources: readonly (readonly [SeniorityLevel, string])[],
+): (readonly [SeniorityLevel, RegExp])[] {
+  return sources.map(([level, source]) => [level, new RegExp(source)] as const);
+}
+
+let titleLevelPatterns = compileTitleLevelPatterns(DEFAULT_TITLE_LEVEL_PATTERN_SOURCES);
+
+export function getTitleLevelPatternSources(): readonly (readonly [SeniorityLevel, string])[] {
+  return titleLevelPatterns.map(([level, pattern]) => [level, pattern.source] as const);
+}
+
+/**
+ * Overrides the seniority classification order/patterns. `sources` must
+ * cover every `SENIORITY_LEVELS` entry exactly once - order is precedence
+ * (most-specific-first, same rule as the built-in default).
+ */
+export function setTitleLevelPatterns(
+  sources: readonly (readonly [SeniorityLevel, string])[],
+): void {
+  titleLevelPatterns = compileTitleLevelPatterns(sources);
+}
 
 /**
  * Years-of-experience cue, extracted from free text (typically
@@ -67,7 +93,7 @@ export function categorizeSeniority(
   experienceProfile: string,
 ): SeniorityLevel | null {
   const normalizedTitle = normalize(title);
-  for (const [level, pattern] of TITLE_LEVEL_PATTERNS) {
+  for (const [level, pattern] of titleLevelPatterns) {
     if (pattern.test(normalizedTitle)) return level;
   }
 
@@ -77,7 +103,7 @@ export function categorizeSeniority(
   if (years.length > 0) return levelFromYears(Math.max(...years));
 
   const normalizedExperience = normalize(experienceProfile ?? '');
-  for (const [level, pattern] of TITLE_LEVEL_PATTERNS) {
+  for (const [level, pattern] of titleLevelPatterns) {
     if (pattern.test(normalizedExperience)) return level;
   }
 

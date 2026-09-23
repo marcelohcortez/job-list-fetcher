@@ -46,6 +46,7 @@ describe('migrations', () => {
       expect(names).toContain('candidate_skills');
       expect(names).toContain('skill_relations');
       expect(names).toContain('job_sent_cvs');
+      expect(names).toContain('app_config');
       expect(names).not.toContain('cv_profile');
 
       const jobEmbeddingsTable = jobColumns.find((t) => t.name === 'job_embeddings');
@@ -60,6 +61,11 @@ describe('migrations', () => {
 
       const indexes = jobColumns.flatMap((t) => t.columns).length;
       expect(indexes).toBeGreaterThan(0);
+
+      await rollbackMigrations(db);
+      const afterAppConfig = await db.introspection.getTables();
+      expect(afterAppConfig.map((t) => t.name)).not.toContain('app_config');
+      expect(afterAppConfig.map((t) => t.name)).toContain('job_sent_cvs');
 
       // 013-candidate-title's and 012-seniority-level's `down` are both
       // no-ops (same SQLite DROP COLUMN caveat as 009-role-categories), so

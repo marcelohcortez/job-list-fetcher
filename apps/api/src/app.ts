@@ -8,6 +8,7 @@ import { jobsRoutes } from './routes/jobs';
 import { ingestionRoutes } from './routes/ingestion';
 import { candidatesRoutes } from './routes/candidates';
 import { matchesRoutes, type MatchesConfig } from './routes/matches';
+import { configRoutes } from './routes/config';
 import type { EmbedJob, TitleScopeCheck } from './ingestion-runner';
 import type { SkillCanonicalizer } from './skill-taxonomy';
 
@@ -36,6 +37,7 @@ export function createApp(
   app.route('/api/ingestion', ingestionRoutes(db, adapters, embedJob, isTitleInScope));
   app.route('/api/candidates', candidatesRoutes(db, semantic, canonicalizeSkills));
   app.route('/api/matches', matchesRoutes(db, semantic, matchesConfig));
+  app.route('/api/config', configRoutes(db, { vectorStore: semantic.vectorStore, embed: semantic.sanitizer.embed }));
 
   return app;
 }

@@ -5,6 +5,7 @@ import {
   findSkillByNormalizedLabel,
   insertSkillIfNew,
   insertSkillRelationIfNew,
+  upsertSkillRelation,
   type JobDb,
   type SkillRelationType,
 } from '@job-fetcher/database';
@@ -12,7 +13,7 @@ import type { VectorStore } from '@job-fetcher/semantic-match';
 
 export type Embed = (text: string) => Promise<number[]>;
 
-interface SkillRelationSeed {
+export interface SkillRelationSeed {
   a: string;
   b: string;
   type: SkillRelationType;
@@ -34,7 +35,7 @@ interface SkillRelationSeed {
  * adjacent but distinct skills, credited lower (~0.5-0.7) since holding one
  * doesn't fully substitute for the other.
  */
-export const SKILL_RELATION_SEEDS: readonly SkillRelationSeed[] = [
+export const DEFAULT_SKILL_RELATION_SEEDS: readonly SkillRelationSeed[] = [
   // Customer-facing / relationship-management cluster
   { a: 'Stakeholder Management', b: 'Client Relationship Management', type: 'equivalent', weight: 0.9 },
   { a: 'Stakeholder Management', b: 'Customer-facing Experience', type: 'related', weight: 0.7 },
@@ -87,8 +88,10 @@ export const SKILL_RELATION_SEEDS: readonly SkillRelationSeed[] = [
   { a: 'E2E Testing', b: 'Testing practices', type: 'related', weight: 0.7 },
   { a: 'TDD', b: 'Testing practices', type: 'related', weight: 0.7 },
   { a: 'Test-Driven Development', b: 'TDD', type: 'equivalent', weight: 0.95 },
-  { a: 'Familiarity with CI/CD workflows and developer tooling', b: 'CI/CD', type: 'equivalent', weight: 0.85 },
-  { a: 'Familiarity with GitLab CI/CD pipelines', b: 'CI/CD', type: 'equivalent', weight: 0.85 },
+  // Any "CI/CD ..." phrasing is folded onto the canonical "CI/CD" skill
+  // generically in createSkillCanonicalizer (skill-taxonomy.ts), so no
+  // per-phrasing seed rows are needed here - only the non-CI/CD-worded
+  // adjacency stays.
   { a: 'Familiarity with GitLab CI/CD pipelines', b: 'GitLab', type: 'related', weight: 0.6 },
   { a: 'Experience with GitHub Workflows and GitHub Actions', b: 'CI/CD', type: 'equivalent', weight: 0.8 },
   { a: 'Experience with Shell', b: 'Bash', type: 'equivalent', weight: 0.85 },
@@ -141,6 +144,22 @@ export const SKILL_RELATION_SEEDS: readonly SkillRelationSeed[] = [
   { a: 'Advanced SQL', b: 'SQL', type: 'equivalent', weight: 1.0 },
 ];
 
+let skillRelationSeeds: SkillRelationSeed[] = [...DEFAULT_SKILL_RELATION_SEEDS];
+
+export function getSkillRelationSeeds(): readonly SkillRelationSeed[] {
+  return skillRelationSeeds;
+}
+
+/**
+ * Overrides the skill-relation seed list in-process (e.g. loaded from the
+ * Configuration screen). Only affects what future startups seed via
+ * `seedSkillRelations` - to also apply the change to relations already in
+ * the database, call `applySkillRelationSeeds`.
+ */
+export function setSkillRelationSeeds(seeds: readonly SkillRelationSeed[]): void {
+  skillRelationSeeds = [...seeds];
+}
+
 /**
  * Skills that describe an operating system rather than a technical
  * competency (e.g. extracted from a stray "Windows/Linux" clause in a job
@@ -148,7 +167,7 @@ export const SKILL_RELATION_SEEDS: readonly SkillRelationSeed[] = [
  * `createSkillCanonicalizer` - neither credited nor penalized - since OS
  * familiarity isn't a meaningful signal to score candidates on here.
  */
-export const OS_SKILL_EXCLUSIONS: ReadonlySet<string> = new Set([
+export const DEFAULT_OS_SKILL_EXCLUSIONS: readonly string[] = [
   'windows',
   'linux',
   'mac',
@@ -156,7 +175,18 @@ export const OS_SKILL_EXCLUSIONS: ReadonlySet<string> = new Set([
   'mac os',
   'os x',
   'unix',
-]);
+];
+
+let osSkillExclusions = new Set(DEFAULT_OS_SKILL_EXCLUSIONS);
+
+export function getOsSkillExclusions(): ReadonlySet<string> {
+  return osSkillExclusions;
+}
+
+/** Overrides the OS-skill exclusion set (e.g. loaded from the Configuration screen). */
+export function setOsSkillExclusions(values: readonly string[]): void {
+  osSkillExclusions = new Set(values);
+}
 
 function normalize(label: string): string {
   return normalizeSkillLabel(label);
@@ -169,7 +199,7 @@ function normalize(label: string): string {
  * identically to one discovered through normal ingestion (findable via
  * `queryNearestSkill`, not a silent duplicate).
  */
-async function resolveSkillId(
+export async function resolveSkillId(
   db: Kysely<JobDb>,
   vectorStore: VectorStore,
   embed: Embed,
@@ -198,15 +228,17 @@ async function resolveSkillId(
 }
 
 /**
- * Seeds `SKILL_RELATION_SEEDS` into the database. Idempotent - safe to call
- * on every startup, like `seedTargetRolePhrases`.
+ * Seeds the current skill-relation seed list into the database. Idempotent -
+ * safe to call on every startup, like `seedTargetRolePhrases`. Only inserts
+ * pairs not already known - it does not update a pair whose weight/type
+ * changed since it was first seeded; use `applySkillRelationSeeds` for that.
  */
 export async function seedSkillRelations(
   db: Kysely<JobDb>,
   vectorStore: VectorStore,
   embed: Embed,
 ): Promise<void> {
-  for (const seed of SKILL_RELATION_SEEDS) {
+  for (const seed of getSkillRelationSeeds()) {
     const idA = await resolveSkillId(db, vectorStore, embed, seed.a);
     const idB = await resolveSkillId(db, vectorStore, embed, seed.b);
 
@@ -219,6 +251,43 @@ export async function seedSkillRelations(
       createdAt: new Date().toISOString(),
     });
     await insertSkillRelationIfNew(db, {
+      id: randomUUID(),
+      skillIdA: idB,
+      skillIdB: idA,
+      relationType: seed.type,
+      weight: seed.weight,
+      createdAt: new Date().toISOString(),
+    });
+  }
+}
+
+/**
+ * Applies `seeds` to the database immediately, updating the weight/type of a
+ * pair already known (unlike `seedSkillRelations`'s insert-if-new). Used by
+ * the Configuration screen so an edited weight takes effect right away
+ * rather than waiting for the pair to be re-discovered from scratch.
+ * Removing an entry stops it from being re-seeded on future startups but
+ * does not delete a relation already written to the database.
+ */
+export async function applySkillRelationSeeds(
+  db: Kysely<JobDb>,
+  vectorStore: VectorStore,
+  embed: Embed,
+  seeds: readonly SkillRelationSeed[],
+): Promise<void> {
+  for (const seed of seeds) {
+    const idA = await resolveSkillId(db, vectorStore, embed, seed.a);
+    const idB = await resolveSkillId(db, vectorStore, embed, seed.b);
+
+    await upsertSkillRelation(db, {
+      id: randomUUID(),
+      skillIdA: idA,
+      skillIdB: idB,
+      relationType: seed.type,
+      weight: seed.weight,
+      createdAt: new Date().toISOString(),
+    });
+    await upsertSkillRelation(db, {
       id: randomUUID(),
       skillIdA: idB,
       skillIdB: idA,

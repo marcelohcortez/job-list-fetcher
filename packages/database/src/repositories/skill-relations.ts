@@ -35,6 +35,34 @@ export async function insertSkillRelationIfNew(
   return row != null;
 }
 
+/**
+ * Inserts one direction of a skill relation, or updates its weight/type if
+ * that (a, b) pair is already known. Unlike `insertSkillRelationIfNew`, an
+ * existing pair's curated weight/type is refreshed rather than left stale.
+ */
+export async function upsertSkillRelation(
+  db: Kysely<JobDb>,
+  input: NewSkillRelation,
+): Promise<void> {
+  await db
+    .insertInto('skill_relations')
+    .values({
+      id: input.id,
+      skill_id_a: input.skillIdA,
+      skill_id_b: input.skillIdB,
+      relation_type: input.relationType,
+      weight: input.weight,
+      created_at: input.createdAt,
+    })
+    .onConflict((oc) =>
+      oc.columns(['skill_id_a', 'skill_id_b']).doUpdateSet({
+        relation_type: input.relationType,
+        weight: input.weight,
+      }),
+    )
+    .execute();
+}
+
 export interface SkillRelationPartner {
   skillId: string;
   weight: number;

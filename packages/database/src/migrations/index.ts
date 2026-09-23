@@ -12,6 +12,7 @@ import { seenJobsMigration } from './010-seen-jobs';
 import { jobSentCvsMigration } from './011-job-sent-cvs';
 import { seniorityLevelMigration } from './012-seniority-level';
 import { candidateTitleMigration } from './013-candidate-title';
+import { appConfigMigration } from './014-app-config';
 
 export const migrations: Record<string, Migration> = {
   '001-initial': initialMigration,
@@ -27,6 +28,7 @@ export const migrations: Record<string, Migration> = {
   '011-job-sent-cvs': jobSentCvsMigration,
   '012-seniority-level': seniorityLevelMigration,
   '013-candidate-title': candidateTitleMigration,
+  '014-app-config': appConfigMigration,
 };
 
 export const migrationProvider = {

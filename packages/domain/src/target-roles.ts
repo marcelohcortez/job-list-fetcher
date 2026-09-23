@@ -1,8 +1,10 @@
 /**
  * The platform's declared interest: the exact job titles we track.
  * A listing is in scope only when its title matches one of these roles.
+ * This is the built-in default - the live list served to matching is
+ * `getTargetRoles()` below, which the Configuration screen can override.
  */
-export const TARGET_ROLES: readonly string[] = [
+export const DEFAULT_TARGET_ROLES: readonly string[] = [
   'Full-Stack Developer',
   'Senior Full-Stack Developer',
   'Lead Full-Stack Developer',
@@ -301,3 +303,15 @@ export const TARGET_ROLES: readonly string[] = [
   'Utvecklare',
   'Konsult',
 ];
+
+let targetRoles: string[] = [...DEFAULT_TARGET_ROLES];
+
+/** The list currently used to filter incoming job titles. */
+export function getTargetRoles(): readonly string[] {
+  return targetRoles;
+}
+
+/** Overrides the target-role list (e.g. loaded from the Configuration screen). */
+export function setTargetRoles(roles: readonly string[]): void {
+  targetRoles = [...roles];
+}

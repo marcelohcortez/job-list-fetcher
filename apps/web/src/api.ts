@@ -247,6 +247,72 @@ export async function resolveDuplicateCandidate(
   return body.data?.deleted ? null : body.data;
 }
 
+export type ConfigFieldType =
+  | 'string_list'
+  | 'regex'
+  | 'kv_map'
+  | 'ordered_pattern_list'
+  | 'relation_list';
+
+export interface SkillRelationSeed {
+  a: string;
+  b: string;
+  type: 'equivalent' | 'related';
+  weight: number;
+}
+
+export type ConfigFieldValue =
+  | string[]
+  | string
+  | Record<string, string>
+  | [string, string][]
+  | SkillRelationSeed[];
+
+export interface ConfigField {
+  key: string;
+  label: string;
+  description: string;
+  type: ConfigFieldType;
+  allowedKeys?: string[];
+  value: ConfigFieldValue;
+  defaultValue: ConfigFieldValue;
+  isDefault: boolean;
+}
+
+export async function fetchConfig(): Promise<ConfigField[]> {
+  const res = await fetch('/api/config');
+  if (!res.ok) throw new Error(`Failed to load configuration (HTTP ${res.status})`);
+  const body = await res.json();
+  return body.data;
+}
+
+export async function updateConfig(
+  key: string,
+  value: ConfigFieldValue,
+): Promise<ConfigField> {
+  const res = await fetch(`/api/config/${key}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ value }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(
+      body?.message ?? body?.error ?? `Failed to save configuration (HTTP ${res.status})`,
+    );
+  }
+  return body.data;
+}
+
+export async function resetConfig(key: string): Promise<ConfigField> {
+  const res = await fetch(`/api/config/${key}/reset`, { method: 'POST' });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.error ?? `Failed to reset configuration (HTTP ${res.status})`);
+  }
+  return body.data;
+}
+
 export async function fetchAllMatches(): Promise<CandidateMatches[]> {
   const res = await fetch('/api/matches');
   const body = await res.json().catch(() => null);

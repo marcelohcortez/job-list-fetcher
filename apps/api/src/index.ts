@@ -25,6 +25,7 @@ import type { EmbedJob } from './ingestion-runner';
 import { seedTargetRolePhrases, createTitleScopeChecker } from './role-scope';
 import { createSkillCanonicalizer } from './skill-taxonomy';
 import { seedSkillRelations } from './skill-relations-seed';
+import { loadConfigFromDb } from './config-registry';
 
 function parseList(value: string | undefined): string[] | undefined {
   if (!value) return undefined;
@@ -44,7 +45,7 @@ function main() {
 
   const sqlite = openSqlite(env.DATABASE_PATH);
   const db = createKysely(sqlite);
-  void runMigrations(db);
+  const migrationsDone = runMigrations(db);
 
   const semantic: SemanticPipeline = {
     sanitizer: createOllamaSanitizer({
@@ -66,6 +67,12 @@ function main() {
       port: env.CHROMA_PORT,
     }),
   };
+
+  void migrationsDone
+    .then(() =>
+      loadConfigFromDb(db, { vectorStore: semantic.vectorStore, embed: semantic.sanitizer.embed }),
+    )
+    .catch((err) => console.warn(`Startup migration/config load failed: ${(err as Error).message}`));
 
   seedTargetRolePhrases(db, semantic.vectorStore, semantic.sanitizer.embed).catch(
     (err) => console.warn(`Target role phrase seeding failed: ${(err as Error).message}`),

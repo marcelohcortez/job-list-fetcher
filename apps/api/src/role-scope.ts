@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Kysely } from 'kysely';
-import { TARGET_ROLES, matchesTargetTitle } from '@job-fetcher/domain';
+import { getTargetRoles, matchesTargetTitle } from '@job-fetcher/domain';
 import {
   insertTargetRolePhraseIfNew,
   listTargetRolePhrases,
@@ -28,7 +28,7 @@ export async function seedTargetRolePhrases(
     (await listTargetRolePhrases(db)).map((row) => row.normalized_phrase),
   );
 
-  for (const role of TARGET_ROLES) {
+  for (const role of getTargetRoles()) {
     const normalizedPhrase = normalizePhrase(role);
     if (known.has(normalizedPhrase)) continue;
 

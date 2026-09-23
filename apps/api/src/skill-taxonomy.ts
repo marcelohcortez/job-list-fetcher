@@ -8,9 +8,31 @@ import {
   type JobDb,
 } from '@job-fetcher/database';
 import type { VectorStore } from '@job-fetcher/semantic-match';
-import { OS_SKILL_EXCLUSIONS } from './skill-relations-seed';
+import { getOsSkillExclusions, resolveSkillId as resolveCanonicalSkillId } from './skill-relations-seed';
 
 export type Embed = (text: string) => Promise<number[]>;
+
+// `normalizeSkillLabel` turns "/" into a space, so "CI/CD Workflows",
+// "CI/CD pipelines", "GitLab CI/CD" etc. all contain the token pair "ci cd"
+// somewhere in the normalized string. Rather than curating every phrasing a
+// job ad happens to use as its own skill-relations-seed row (which is what
+// kept missing new variants like "CI/CD Workflows"), any label containing
+// that token pair is folded straight onto the canonical "CI/CD" skill. This
+// is the built-in default - the live pattern is `getCiCdTokenPattern()`
+// below, which the Configuration screen can override.
+export const DEFAULT_CI_CD_TOKEN_PATTERN = '(?:^|\\s)ci cd(?:\\s|$)';
+let ciCdTokenPattern = new RegExp(DEFAULT_CI_CD_TOKEN_PATTERN);
+
+export function getCiCdTokenPattern(): string {
+  return ciCdTokenPattern.source;
+}
+
+/** Overrides the CI/CD token-detection regex. Throws if `source` isn't a valid pattern. */
+export function setCiCdTokenPattern(source: string): void {
+  ciCdTokenPattern = new RegExp(source);
+}
+
+const CI_CD_CANONICAL_LABEL = 'CI/CD';
 
 export type SkillCanonicalizer = (rawSkills: string[]) => Promise<string[]>;
 
@@ -41,11 +63,17 @@ export function createSkillCanonicalizer(
       // Operating systems (Windows/Linux/macOS/...) aren't a meaningful
       // matching signal here - drop them so they're neither credited nor
       // penalized rather than becoming a skill that scores like any other.
-      if (OS_SKILL_EXCLUSIONS.has(normalized)) continue;
+      if (getOsSkillExclusions().has(normalized)) continue;
 
       const existing = await findSkillByNormalizedLabel(db, normalized);
       if (existing) {
         skillIds.add(existing.id);
+        continue;
+      }
+
+      if (normalized !== normalizeSkillLabel(CI_CD_CANONICAL_LABEL) && ciCdTokenPattern.test(normalized)) {
+        const ciCdId = await resolveCanonicalSkillId(db, vectorStore, embed, CI_CD_CANONICAL_LABEL);
+        skillIds.add(ciCdId);
         continue;
       }
 

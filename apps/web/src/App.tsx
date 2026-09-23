@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined';
+import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
+import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined';
+import TrackChangesOutlinedIcon from '@mui/icons-material/TrackChangesOutlined';
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import {
   fetchCandidates,
   fetchIngestionRuns,
@@ -18,8 +24,9 @@ import { JobCard } from './components/JobCard';
 import { UploadCvTab } from './UploadCvTab';
 import { UploadCvsTab } from './UploadCvsTab';
 import { MatchesTab } from './MatchesTab';
+import { ConfigTab } from './ConfigTab';
 
-type Tab = 'jobs' | 'applied' | 'upload-cv' | 'upload-cvs' | 'matches';
+type Tab = 'jobs' | 'applied' | 'upload-cv' | 'upload-cvs' | 'matches' | 'config';
 
 interface Summary {
   counts: IngestionRun['counts'];
@@ -27,12 +34,18 @@ interface Summary {
   ranAt: Date;
 }
 
-const NAV_ITEMS: { id: Tab; path: string; label: string; icon: string }[] = [
-  { id: 'jobs', path: '/jobs', label: 'Openings', icon: '💼' },
-  { id: 'applied', path: '/applied', label: 'Applied', icon: '✅' },
-  { id: 'upload-cv', path: '/upload-cv', label: 'Upload CV', icon: '📄' },
-  { id: 'upload-cvs', path: '/upload-cvs', label: 'Upload CVs', icon: '📚' },
-  { id: 'matches', path: '/matches', label: 'Matches', icon: '🎯' },
+const NAV_ITEMS: {
+  id: Tab;
+  path: string;
+  label: string;
+  Icon: typeof WorkOutlineOutlinedIcon;
+}[] = [
+  { id: 'jobs', path: '/jobs', label: 'Openings', Icon: WorkOutlineOutlinedIcon },
+  { id: 'applied', path: '/applied', label: 'Applied', Icon: TaskAltOutlinedIcon },
+  { id: 'upload-cv', path: '/upload-cv', label: 'Upload CV', Icon: UploadFileOutlinedIcon },
+  { id: 'upload-cvs', path: '/upload-cvs', label: 'Upload CVs', Icon: LibraryBooksOutlinedIcon },
+  { id: 'matches', path: '/matches', label: 'Matches', Icon: TrackChangesOutlinedIcon },
+  { id: 'config', path: '/config', label: 'Configuration', Icon: SettingsOutlinedIcon },
 ];
 
 const TAB_TITLES: Record<Tab, { title: string; subtitle: string }> = {
@@ -56,6 +69,10 @@ const TAB_TITLES: Record<Tab, { title: string; subtitle: string }> = {
   matches: {
     title: 'Matches',
     subtitle: 'Candidates matched against open roles.',
+  },
+  config: {
+    title: 'Configuration',
+    subtitle: 'Edit the titles, suffixes and regex patterns used to filter and match jobs.',
   },
 };
 
@@ -271,8 +288,7 @@ function AppliedTab({
 export default function App() {
   const location = useLocation();
   const currentTab =
-    NAV_ITEMS.find((item) => location.pathname.startsWith(item.path))?.id ??
-    'jobs';
+    NAV_ITEMS.find((item) => location.pathname === item.path)?.id ?? 'jobs';
 
   const [jobs, setJobs] = useState<JobOpening[]>([]);
   const [knownSources, setKnownSources] = useState<string[]>([]);
@@ -458,9 +474,7 @@ export default function App() {
                 currentTab === item.id ? 'sidenav-item active' : 'sidenav-item'
               }
             >
-              <span className="sidenav-icon" aria-hidden="true">
-                {item.icon}
-              </span>
+              <item.Icon className="sidenav-icon" fontSize="small" aria-hidden="true" />
               {item.label}
             </Link>
           ))}
@@ -549,6 +563,7 @@ export default function App() {
             <Route path="/upload-cv" element={<UploadCvTab />} />
             <Route path="/upload-cvs" element={<UploadCvsTab />} />
             <Route path="/matches" element={<MatchesTab />} />
+            <Route path="/config" element={<ConfigTab />} />
             <Route path="*" element={<Navigate to="/jobs" replace />} />
           </Routes>
         </main>

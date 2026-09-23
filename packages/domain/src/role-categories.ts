@@ -39,32 +39,57 @@ function normalizeTitle(value: string): string {
  * pattern in turn and the first match wins, so a broad catch-all (e.g.
  * `engineering`'s bare "engineer"/"developer") has to come last or it would
  * swallow titles that belong to a more specific category (e.g. "DevOps
- * Engineer", "Data Engineer", "Engineering Manager").
+ * Engineer", "Data Engineer", "Engineering Manager"). This is the built-in
+ * default - the live, editable order/patterns are `getCategoryPatternSources()`
+ * below, which the Configuration screen can override (reordering included).
  */
-const CATEGORY_PATTERNS: readonly (readonly [RoleCategory, RegExp])[] = [
-  ['design', /\b(designer|ux|ui|user experience|user interface|graphic design|visual design)\b/],
+export const DEFAULT_CATEGORY_PATTERN_SOURCES: readonly (readonly [RoleCategory, string])[] = [
+  ['design', '\\b(designer|ux|ui|user experience|user interface|graphic design|visual design)\\b'],
   [
     'leadership',
-    /\b(head of|director|\bvp\b|chief\b|engineering manager|development manager|software development manager)\b/,
+    '\\b(head of|director|\\bvp\\b|chief\\b|engineering manager|development manager|software development manager)\\b',
   ],
   [
     'devops-cloud',
-    /\b(devops|platform engineer|site reliability|\bsre\b|cloud (solutions? )?architect|cloud engineer|mlops)\b/,
+    '\\b(devops|platform engineer|site reliability|\\bsre\\b|cloud (solutions? )?architect|cloud engineer|mlops)\\b',
   ],
   [
     'data-ai',
-    /\b(data engineer|data platform|analytics engineer|machine learning|ml engineer|ai engineer|applied ai|data scientist)\b/,
+    '\\b(data engineer|data platform|analytics engineer|machine learning|ml engineer|ai engineer|applied ai|data scientist)\\b',
   ],
-  ['product-management', /\b(product manager|product owner|program manager|technical program manager)\b/],
-  ['delivery-management', /\b(delivery manager|project manager|scrum master|engagement manager|programme manager)\b/],
-  ['business-analysis', /\b(business analyst|business systems analyst)\b/],
+  ['product-management', '\\b(product manager|product owner|program manager|technical program manager)\\b'],
+  ['delivery-management', '\\b(delivery manager|project manager|scrum master|engagement manager|programme manager)\\b'],
+  ['business-analysis', '\\b(business analyst|business systems analyst)\\b'],
   [
     'sales-customer-success',
-    /\b(sales engineer|customer success|technical account manager|customer enablement|solutions engineer)\b/,
+    '\\b(sales engineer|customer success|technical account manager|customer enablement|solutions engineer)\\b',
   ],
-  ['consulting-advisory', /\b(consultant|advisor|advisory)\b/],
-  ['engineering', /\b(engineer|developer|architect|full ?stack|frontend|front end|backend|software)\b/],
+  ['consulting-advisory', '\\b(consultant|advisor|advisory)\\b'],
+  ['engineering', '\\b(engineer|developer|architect|full ?stack|frontend|front end|backend|software)\\b'],
 ];
+
+function compileCategoryPatterns(
+  sources: readonly (readonly [RoleCategory, string])[],
+): (readonly [RoleCategory, RegExp])[] {
+  return sources.map(([category, source]) => [category, new RegExp(source)] as const);
+}
+
+let categoryPatterns = compileCategoryPatterns(DEFAULT_CATEGORY_PATTERN_SOURCES);
+
+export function getCategoryPatternSources(): readonly (readonly [RoleCategory, string])[] {
+  return categoryPatterns.map(([category, pattern]) => [category, pattern.source] as const);
+}
+
+/**
+ * Overrides the category classification order/patterns. `sources` must cover
+ * every `ROLE_CATEGORIES` entry exactly once - order is precedence
+ * (most-specific-first, same rule as the built-in default).
+ */
+export function setCategoryPatterns(
+  sources: readonly (readonly [RoleCategory, string])[],
+): void {
+  categoryPatterns = compileCategoryPatterns(sources);
+}
 
 /**
  * Best-effort classification of a job or candidate title into a coarse role
@@ -74,7 +99,7 @@ const CATEGORY_PATTERNS: readonly (readonly [RoleCategory, RegExp])[] = [
 export function categorizeRoleTitle(title: string): RoleCategory | null {
   const normalized = normalizeTitle(title);
   if (!normalized) return null;
-  for (const [category, pattern] of CATEGORY_PATTERNS) {
+  for (const [category, pattern] of categoryPatterns) {
     if (pattern.test(normalized)) return category;
   }
   return null;
