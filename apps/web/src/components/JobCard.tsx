@@ -22,6 +22,73 @@ function candidateLabel(candidate: Candidate): string {
   return candidate.candidateName || candidate.fileName;
 }
 
+const VISIBLE_SKILL_CAP = 6;
+
+function SkillChipGroup({
+  label,
+  skills,
+  variant,
+}: {
+  label: string;
+  skills: string[];
+  variant: 'matched' | 'missing';
+}) {
+  const visible = skills.slice(0, VISIBLE_SKILL_CAP);
+  const rest = skills.slice(VISIBLE_SKILL_CAP);
+
+  return (
+    <div className={`skill-group skill-group-${variant}`}>
+      <span className="skill-group-label">{label}</span>
+      <div className="skill-chips">
+        {visible.map((skill) => (
+          <span key={skill} className={`skill-chip skill-chip-${variant}`}>
+            {skill}
+          </span>
+        ))}
+        {rest.length > 0 && (
+          <details className="skill-chip-more">
+            <summary>+{rest.length} more</summary>
+            <div className="skill-chips">
+              {rest.map((skill) => (
+                <span key={skill} className={`skill-chip skill-chip-${variant}`}>
+                  {skill}
+                </span>
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SkillBreakdown({
+  matchedSkills,
+  missingSkills,
+}: {
+  matchedSkills?: string[];
+  missingSkills?: string[];
+}) {
+  return (
+    <div className="skill-breakdown">
+      {matchedSkills && matchedSkills.length > 0 && (
+        <SkillChipGroup
+          label="Matched skills"
+          skills={matchedSkills}
+          variant="matched"
+        />
+      )}
+      {missingSkills && missingSkills.length > 0 && (
+        <SkillChipGroup
+          label="Missing skills"
+          skills={missingSkills}
+          variant="missing"
+        />
+      )}
+    </div>
+  );
+}
+
 export function JobCard({
   job,
   similarity,
@@ -61,7 +128,6 @@ export function JobCard({
     <li className={job.seenAt ? 'job job-seen' : 'job'}>
       <div className="job-head">
         <h2>{job.title}</h2>
-        <span className="status status-active">{job.status}</span>
         {job.seenAt && <span className="status status-seen">Seen</span>}
       </div>
       <div className="meta">
@@ -73,45 +139,21 @@ export function JobCard({
         )}
       </div>
       {similarity != null && (
-        <div className="match">
+        <p className="match">
           <span className="match-score">
             {Math.round(similarity * 100)}% match
           </span>
           {skillCoverage != null && requiredSkillCount ? (
             <span className="match-counts">
-              {matchedSkillCount}/{requiredSkillCount} required skills
+              {' '}
+              · {matchedSkillCount}/{requiredSkillCount} required skills
             </span>
           ) : null}
-        </div>
+        </p>
       )}
       {((matchedSkills && matchedSkills.length > 0) ||
         (missingSkills && missingSkills.length > 0)) && (
-        <div className="skill-breakdown">
-          {matchedSkills && matchedSkills.length > 0 && (
-            <div className="skill-group skill-group-matched">
-              <span className="skill-group-label">Matched skills</span>
-              <div className="skill-chips">
-                {matchedSkills.map((skill) => (
-                  <span key={skill} className="skill-chip skill-chip-matched">
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-          {missingSkills && missingSkills.length > 0 && (
-            <div className="skill-group skill-group-missing">
-              <span className="skill-group-label">Missing skills</span>
-              <div className="skill-chips">
-                {missingSkills.map((skill) => (
-                  <span key={skill} className="skill-chip skill-chip-missing">
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <SkillBreakdown matchedSkills={matchedSkills} missingSkills={missingSkills} />
       )}
       {job.description && (
         <p className="description">{snippet(job.description)}</p>
