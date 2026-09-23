@@ -85,7 +85,11 @@ async function sanitizeCandidate(
       });
     }
   } catch (err) {
-    await markCandidateFailed(db, candidateId, (err as Error).message);
+    const error = err as Error & { cause?: unknown };
+    const message = error.cause
+      ? `${error.message}: ${String((error.cause as Error).message ?? error.cause)}`
+      : error.message;
+    await markCandidateFailed(db, candidateId, message);
   }
 }
 
