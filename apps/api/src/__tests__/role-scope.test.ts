@@ -17,6 +17,8 @@ function fakeVectorStore(
     upsertCandidate: vi.fn(),
     deleteCandidate: vi.fn(),
     getCandidateEmbedding: vi.fn(),
+    getJobEmbedding: vi.fn().mockResolvedValue(null),
+    queryCandidatesForJob: vi.fn().mockResolvedValue([]),
     queryJobsForCandidate: vi.fn(),
     upsertRolePhrase: vi.fn().mockResolvedValue(undefined),
     queryNearestRolePhrase: vi.fn().mockResolvedValue(null),
@@ -79,6 +81,23 @@ describe('createTitleScopeChecker', () => {
     const rows = await listTargetRolePhrases(db);
     expect(rows).toHaveLength(1);
     expect(rows[0].source).toBe('learned');
+  });
+
+  it('embeds title plus description when a description is given, and accepts on that combined match', async () => {
+    const vectorStore = fakeVectorStore({
+      queryNearestRolePhrase: vi.fn().mockResolvedValue({ id: 'seed-1', similarity: 0.9 }),
+    });
+    const embed = vi.fn().mockResolvedValue([0.6, 0.7]);
+    const isTitleInScope = createTitleScopeChecker(db, vectorStore, embed, 0.85);
+
+    const result = await isTitleInScope(
+      'Codename Falcon',
+      'We are looking for a Full-Stack Developer to build our React/Node web app.',
+    );
+    expect(result).toBe(true);
+    expect(embed).toHaveBeenCalledWith(
+      'Codename Falcon\n\nWe are looking for a Full-Stack Developer to build our React/Node web app.',
+    );
   });
 
   it('rejects a title whose nearest phrase is below the similarity threshold', async () => {

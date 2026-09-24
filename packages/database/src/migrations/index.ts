@@ -13,6 +13,10 @@ import { jobSentCvsMigration } from './011-job-sent-cvs';
 import { seniorityLevelMigration } from './012-seniority-level';
 import { candidateTitleMigration } from './013-candidate-title';
 import { appConfigMigration } from './014-app-config';
+import { layaEvaluationsMigration } from './015-laya-evaluations';
+import { savedJobsMigration } from './016-saved-jobs';
+import { layaMismatchReasoningMigration } from './017-laya-mismatch-reasoning';
+import { deadJobsMigration } from './018-dead-jobs';
 
 export const migrations: Record<string, Migration> = {
   '001-initial': initialMigration,
@@ -29,6 +33,10 @@ export const migrations: Record<string, Migration> = {
   '012-seniority-level': seniorityLevelMigration,
   '013-candidate-title': candidateTitleMigration,
   '014-app-config': appConfigMigration,
+  '015-laya-evaluations': layaEvaluationsMigration,
+  '016-saved-jobs': savedJobsMigration,
+  '017-laya-mismatch-reasoning': layaMismatchReasoningMigration,
+  '018-dead-jobs': deadJobsMigration,
 };
 
 export const migrationProvider = {

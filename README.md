@@ -98,6 +98,10 @@ Everything is configured through `.env` (copy from `.env.example`). All values a
 | `NO_REQUIRED_SKILLS_PENALTY`| `0.75`            | Multiplier applied to the match score when a job has zero extracted required skills, so scoring falls back to semantic similarity alone. |
 | `OLLAMA_NUM_CTX`            | `8192`            | Context window (prompt + response, in tokens) for every Ollama call — see "Tuning Ollama's context/output limits" below. |
 | `OLLAMA_NUM_PREDICT`        | `-1`              | Max tokens generated per Ollama call. `-1` is unbounded (Ollama's own default) — see "Tuning Ollama's context/output limits" below. |
+| `LAYA_API_URL`              | unset             | Enables Laya, a self-hosted LLM-judge re-ranking signal, when set (e.g. `http://localhost:8002` — see "Laya (LLM-judge re-ranking)" below). Unset means it's skipped entirely. |
+| `LAYA_API_KEY`              | unset             | Bearer token sent to Laya, if it's configured to require one. |
+| `LAYA_TOP_K`                | `10`              | Counterpart candidates/jobs evaluated by Laya per freshly-ingested item (each evaluation is an inference call). |
+| `LAYA_WEIGHT`               | `0.3`             | Weight (0-1) given to Laya's score in the match blend, on top of skill coverage + semantic similarity. |
 
 ## Customizing
 
@@ -249,6 +253,16 @@ Without these, a long CV/job ad (prompt + rewrite/JSON output together exceeding
 **Duplicate candidates** (see [ADR 0006](Docs/adr/0006-vector-role-scope-and-candidate-dedup.md)) — if a newly sanitized CV's extracted name matches an existing `sanitized` candidate's name, the new upload is stored as `status = 'duplicate'` (pointing at the existing row via `duplicate_of_id`) instead of becoming a second matchable profile. Both **Upload CV** and **Upload CVs** surface a resolution prompt for any `duplicate` candidate: **ignore** discards the new upload, **replace** deletes the existing candidate (and its vector) and promotes the new one to `sanitized`. See `POST /api/candidates/:id/resolve-duplicate` in the API section below.
 
 Everything runs locally: no CV or job text leaves the machine (or the Docker network, if you run it via `docker compose up`).
+
+## Laya (LLM-judge re-ranking)
+
+Optional third scoring signal on top of skill-coverage + semantic similarity — see [Docs/laya-integration-plan.md](Docs/laya-integration-plan.md) and [Docs/matching_pipeline.md](Docs/matching_pipeline.md) step 7.5 for the full design. Laya ([github.com/NandhaKishorM/laya](https://github.com/NandhaKishorM/laya)) is a self-hosted classifier judging a CV against a job description directly; it doesn't generate text, so the reasoning shown in the UI comes from the existing local Ollama model instead.
+
+**Via Docker** (`npm run docker:up` / `docker compose up -d`): the `laya` service starts automatically alongside `app`/`chroma`, built from `docker/laya.Dockerfile` and reached by the `app` container at `http://laya:8000` by default — no extra flags needed. Model checkpoints download from the Hugging Face Hub on first request and are cached in the `laya_models` volume. Set `LAYA_API_URL=` (blank) in `.env` to disable it even though the container is running.
+
+**Running the API natively** (`npm run dev`, outside Docker) still needs Laya reachable at a host port: `docker compose up -d laya` (with `ports: 8002:8000` already mapped) and set `LAYA_API_URL=http://localhost:8002` in `.env`.
+
+Once running, Laya evaluations happen automatically at ingestion time for newly-fetched jobs and newly-uploaded CVs. To backfill pairs that predate turning Laya on: `npm run backfill:laya --workspace @job-fetcher/api`.
 
 ## User marks
 

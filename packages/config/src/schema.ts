@@ -8,8 +8,6 @@ export const envSchema = z.object({
   THEIRSTACK_API_KEY: z.string().min(1).optional(),
   JOBTECH_QUERIES: z.string().optional(),
   JOBTECH_MUNICIPALITY_CODE: z.string().default('1480'),
-  GREENHOUSE_BOARDS: z.string().optional(),
-  LEVER_BOARDS: z.string().optional(),
   DATABASE_PATH: z.string().default('./data/jobs.db'),
   PORT: z.coerce.number().int().positive().default(4000),
   OLLAMA_HOST: z.string().default('http://localhost:11434'),
@@ -28,6 +26,10 @@ export const envSchema = z.object({
   NO_REQUIRED_SKILLS_PENALTY: z.coerce.number().min(0).max(1).default(0.75),
   SENIORITY_MISMATCH_PENALTY: z.coerce.number().min(0).max(1).default(0.7),
   MIN_SKILLS_FOR_FULL_CONFIDENCE: z.coerce.number().int().positive().default(3),
+  LAYA_API_URL: z.string().optional(),
+  LAYA_API_KEY: z.string().min(1).optional(),
+  LAYA_TOP_K: z.coerce.number().int().positive().default(10),
+  LAYA_WEIGHT: z.coerce.number().min(0).max(1).default(0.3),
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
     .default('development'),

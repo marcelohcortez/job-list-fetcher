@@ -50,10 +50,16 @@ export async function seedTargetRolePhrases(
 /**
  * Hybrid title scope check: the exact `TARGET_ROLES` regex match first, then
  * a vector similarity fallback against the ever-growing
- * `target_role_phrases` collection for titles that are close variants of a
- * known role but don't match the regex exactly (e.g. "Senior Fullstack
- * Engineer II"). Any title accepted via the vector fallback is folded back
- * into the phrase list, so the vector side keeps learning new phrasings.
+ * `target_role_phrases` collection for postings that are close variants of a
+ * known role but don't match the regex exactly. The fallback embeds the
+ * title plus description (when a description is available) rather than the
+ * title alone, so a posting with an odd/non-standard title but a clearly
+ * in-scope description (e.g. an internal codename title over a plain
+ * full-stack developer posting) is still recognized - title alone often
+ * isn't enough signal on its own. Any title accepted via the vector
+ * fallback is folded back into the phrase list (keyed by title, so the
+ * learned phrase stays short and reusable), so the vector side keeps
+ * learning new phrasings.
  */
 export function createTitleScopeChecker(
   db: Kysely<JobDb>,
@@ -61,11 +67,12 @@ export function createTitleScopeChecker(
   embed: Embed,
   minSimilarity: number,
 ): TitleScopeCheck {
-  return async (title: string): Promise<boolean> => {
+  return async (title: string, description?: string | null): Promise<boolean> => {
     if (!title) return false;
     if (matchesTargetTitle(title)) return true;
 
-    const embedding = await embed(title);
+    const embedText = description ? `${title}\n\n${description}` : title;
+    const embedding = await embed(embedText);
     const nearest = await vectorStore.queryNearestRolePhrase(embedding);
     if (!nearest || nearest.similarity < minSimilarity) return false;
 

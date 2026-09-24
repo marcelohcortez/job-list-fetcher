@@ -57,10 +57,11 @@ function textToValue(type: ConfigField['type'], text: string): ConfigFieldValue 
         if (parts.length !== 4) {
           throw new Error(`Line "${line}" must have 4 parts separated by "|": a | b | type | weight.`);
         }
-        const [a, b, type, weightText] = parts;
-        if (type !== 'equivalent' && type !== 'related') {
+        const [a, b, rawType, weightText] = parts;
+        if (rawType !== 'equivalent' && rawType !== 'related') {
           throw new Error(`Line "${line}": type must be "equivalent" or "related".`);
         }
+        const type: 'equivalent' | 'related' = rawType;
         const weight = Number(weightText);
         if (!Number.isFinite(weight)) throw new Error(`Line "${line}": weight must be a number.`);
         return { a, b, type, weight };

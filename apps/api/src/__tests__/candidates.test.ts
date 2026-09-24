@@ -45,6 +45,8 @@ function fakeSemantic(overrides: Partial<SemanticPipeline> = {}): SemanticPipeli
       upsertCandidate: vi.fn().mockResolvedValue(undefined),
       deleteCandidate: vi.fn().mockResolvedValue(undefined),
       getCandidateEmbedding: vi.fn().mockResolvedValue([0.1, 0.2]),
+      getJobEmbedding: vi.fn().mockResolvedValue(null),
+      queryCandidatesForJob: vi.fn().mockResolvedValue([]),
       queryJobsForCandidate: vi.fn().mockResolvedValue([]),
       upsertRolePhrase: vi.fn().mockResolvedValue(undefined),
       queryNearestRolePhrase: vi.fn().mockResolvedValue(null),

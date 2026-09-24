@@ -18,6 +18,7 @@ function pendingCandidate(file: File, index: number): Candidate {
     sizeBytes: file.size,
     wordCount: 0,
     candidateName: null,
+    candidateTitle: null,
     status: 'pending',
     error: null,
     duplicateOfId: null,

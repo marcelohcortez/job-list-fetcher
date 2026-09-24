@@ -16,11 +16,13 @@ import {
 } from '@job-fetcher/database';
 import {
   processCandidate,
+  type LayaClient,
   type SemanticPipeline,
 } from '@job-fetcher/semantic-match';
 import { categorizeRoleTitle, categorizeSeniority } from '@job-fetcher/domain';
 import { extractPdfText } from '../cv/pdf';
 import type { SkillCanonicalizer } from '../skill-taxonomy';
+import { evaluateLayaForNewCandidate } from '../laya-runner';
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const BATCH_DELAY_MS = 250;
@@ -46,6 +48,7 @@ async function sanitizeCandidate(
   canonicalizeSkills: SkillCanonicalizer,
   candidateId: string,
   extractedText: string,
+  laya?: { client: LayaClient; topK: number },
 ): Promise<void> {
   try {
     const { sanitized, anchorDocument } = await processCandidate(
@@ -83,6 +86,16 @@ async function sanitizeCandidate(
         roleCategory,
         seniorityLevel,
       });
+      if (laya) {
+        await evaluateLayaForNewCandidate(
+          db,
+          pipeline,
+          laya.client,
+          candidateId,
+          anchorDocument,
+          laya.topK,
+        );
+      }
     }
   } catch (err) {
     const error = err as Error & { cause?: unknown };
@@ -97,6 +110,7 @@ export function candidatesRoutes(
   db: Kysely<JobDb>,
   pipeline: SemanticPipeline,
   canonicalizeSkills: SkillCanonicalizer,
+  laya?: { client: LayaClient; topK: number },
 ) {
   const app = new Hono();
 
@@ -130,7 +144,7 @@ export function candidatesRoutes(
       pdfBytes: file.bytes,
       extractedText,
     });
-    await sanitizeCandidate(db, pipeline, canonicalizeSkills, candidate.id, extractedText);
+    await sanitizeCandidate(db, pipeline, canonicalizeSkills, candidate.id, extractedText, laya);
 
     const stored = await getCandidate(db, candidate.id);
     return c.json({ data: toCandidateSummary(stored!) });
@@ -164,7 +178,7 @@ export function candidatesRoutes(
         pdfBytes: file.bytes,
         extractedText,
       });
-      await sanitizeCandidate(db, pipeline, canonicalizeSkills, candidate.id, extractedText);
+      await sanitizeCandidate(db, pipeline, canonicalizeSkills, candidate.id, extractedText, laya);
       const stored = await getCandidate(db, candidate.id);
       results.push({ data: toCandidateSummary(stored!) });
 

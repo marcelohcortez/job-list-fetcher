@@ -367,7 +367,15 @@ main {
   background: var(--muted);
 }
 
+.status-dead {
+  background: var(--danger);
+}
+
 .job-seen {
+  opacity: 0.75;
+}
+
+.job-dead {
   opacity: 0.75;
 }
 
@@ -420,6 +428,22 @@ main {
   text-decoration: underline;
 }
 
+.btn-view-original {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  background: transparent;
+  color: var(--fg) !important;
+  text-decoration: none !important;
+}
+
+.btn-view-original:hover {
+  border-color: var(--accent);
+  color: var(--accent) !important;
+}
+
 .marks {
   display: flex;
   gap: 8px;
@@ -451,10 +475,10 @@ main {
   color: var(--success);
 }
 
-.mark.active.not-interested {
-  background: var(--danger-soft);
-  border-color: var(--danger);
-  color: var(--danger);
+.mark.active.saved {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .mark.active.seen {
@@ -463,9 +487,28 @@ main {
   color: var(--fg);
 }
 
+.mark.active.dead {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 .mark:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.top-matches {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--fg);
+}
+
+.top-matches-label {
+  font-weight: 600;
+  color: var(--muted);
 }
 
 .sent-cvs {
@@ -607,6 +650,90 @@ main {
   opacity: 0.85;
 }
 
+.laya-choice {
+  text-transform: capitalize;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.laya-choice-strong {
+  background: var(--success-soft, rgba(34, 139, 34, 0.15));
+  color: var(--success, #1a7431);
+}
+
+.laya-choice-weak {
+  background: var(--danger-soft, rgba(200, 50, 50, 0.12));
+  color: var(--danger, #a32323);
+}
+
+/* Deliberately plain - no icon, no colored box - so the one new piece of
+   free text on a job card (Laya's reasoning) doesn't add to card clutter,
+   see Docs/laya-integration-plan.md "UI (Decision 6)". */
+.laya-reasoning {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
+.match-collapsibles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.match-collapsible {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0;
+}
+
+.match-collapsible summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
+  list-style: none;
+}
+
+.match-collapsible summary::-webkit-details-marker {
+  display: none;
+}
+
+.match-collapsible summary::after {
+  content: '▶';
+  font-size: 12px;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.match-collapsible[open] summary::after {
+  transform: rotate(90deg);
+}
+
+.match-collapsible[open] summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.match-collapsible-body {
+  padding: 10px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.match-collapsible-body p {
+  margin: 0;
+}
+
 .skill-breakdown {
   display: flex;
   flex-direction: column;
@@ -631,6 +758,7 @@ main {
 .skill-chips {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   gap: 6px;
 }
 
@@ -749,6 +877,58 @@ main {
   background: var(--danger-soft);
 }
 
+.candidate-search {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.candidate-search-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.candidate-search-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.candidate-search-suggestions li button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.candidate-search-suggestions li button:hover {
+  background: var(--hover, rgba(0, 0, 0, 0.05));
+}
+
+.candidate-title {
+  font-weight: 400;
+  color: var(--muted, #666);
+}
+
 .candidate-matches {
   margin-bottom: 16px;
   border: 1px solid var(--border);
@@ -756,7 +936,7 @@ main {
   padding: 0 16px;
 }
 
-.candidate-matches summary {
+.candidate-matches > summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -766,18 +946,19 @@ main {
   list-style: none;
 }
 
-.candidate-matches summary::-webkit-details-marker {
+.candidate-matches > summary::-webkit-details-marker {
   display: none;
 }
 
-.candidate-matches summary::before {
+.candidate-matches > summary::after {
   content: '▶';
   font-size: 12px;
-  margin-right: 10px;
+  flex-shrink: 0;
+  margin-left: 10px;
   transition: transform 0.15s ease;
 }
 
-.candidate-matches[open] summary::before {
+.candidate-matches[open] > summary::after {
   transform: rotate(90deg);
 }
 

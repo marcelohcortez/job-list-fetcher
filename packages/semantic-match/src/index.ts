@@ -15,10 +15,19 @@ export { createOllamaCvRefactor } from './refactor';
 export type { CvRefactorClient } from './refactor';
 export { createVectorStore } from './chroma';
 export type { ChromaConfig, VectorStore } from './chroma';
+export { createLayaClient, createOllamaReasoner } from './laya';
+export type {
+  LayaClient,
+  LayaConfig,
+  LayaEvaluation,
+  LayaVerdict,
+  ReasoningGenerator,
+} from './laya';
 export {
   processJobOpening,
   processCandidate,
   matchJobsForCandidate,
+  matchCandidatesForJob,
 } from './pipeline';
 export type {
   SemanticPipeline,

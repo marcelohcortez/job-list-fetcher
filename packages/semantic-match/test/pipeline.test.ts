@@ -43,6 +43,8 @@ function fakeVectorStore(): VectorStore {
     upsertCandidate: vi.fn().mockResolvedValue(undefined),
     deleteCandidate: vi.fn().mockResolvedValue(undefined),
     getCandidateEmbedding: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+    getJobEmbedding: vi.fn().mockResolvedValue(null),
+    queryCandidatesForJob: vi.fn().mockResolvedValue([]),
     queryJobsForCandidate: vi
       .fn()
       .mockResolvedValue([{ id: 'job-1', similarity: 0.9 }]),

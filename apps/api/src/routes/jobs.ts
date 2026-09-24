@@ -14,7 +14,7 @@ import {
 import { getSourcesForJob, toSourceRecord } from '@job-fetcher/database';
 import type { JobOpening, SourceRecord } from '@job-fetcher/domain';
 
-const MARK_VALUES: readonly UserMark[] = ['applied', 'not_interested'];
+const MARK_VALUES: readonly UserMark[] = ['applied', 'saved', 'dead'];
 
 type JobWithMark = JobOpening & {
   userMark: UserMark | null;

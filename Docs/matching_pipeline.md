@@ -109,12 +109,22 @@ A job counts as a match only if `score >= MATCH_MIN_SIMILARITY` (default `0.65`)
 
 **To change scoring weights/thresholds**: env vars `SKILL_OVERLAP_WEIGHT` (default `0.6`), `MATCH_MIN_SIMILARITY` (default `0.65`), `MATCH_TOP_K` (default unset), `ROLE_MISMATCH_PENALTY` (default `0.5`), `NO_REQUIRED_SKILLS_PENALTY` (default `0.75`). To change the scoring *logic itself* (not just its weights): `blendScore` in `apps/api/src/routes/matches.ts`.
 
+### 7.5 Laya evaluation (LLM-judge re-ranking)
+
+See [laya-integration-plan.md](laya-integration-plan.md) for the full design. Laya ([github.com/NandhaKishorM/laya](https://github.com/NandhaKishorM/laya)) is a self-hosted classifier, run as an optional third scoring signal on top of skill-coverage + semantic similarity — added because those two signals still can't tell a genuinely strong fit from an unrelated role that happens to share vocabulary or a thin skill list (see "Known limitations" below).
+
+- **When it runs**: eagerly, right after a job or CV is sanitized and inserted into Chroma (`packages/semantic-match/src/pipeline.ts`'s `processJobOpening`/`processCandidate` callers in `apps/api/src/index.ts`/`routes/candidates.ts`) — immediately queries that item's freshly-computed top-`LAYA_TOP_K` counterpart shortlist and evaluates each pair (`apps/api/src/laya-runner.ts`). Already-stored pairs that predate this feature need `npm run backfill:laya --workspace @job-fetcher/api`.
+- **What it returns**: a `score` (0-1, normalized from Laya's ordinal `fit` rubric), a `choice` verdict (`strong`/`moderate`/`weak`), and a `reasoning` string. Laya itself is a non-generative BERT classifier and never produces text — `reasoning` is generated separately by the existing local Ollama model (`createOllamaReasoner`, `packages/semantic-match/src/laya.ts`), given the job/CV text plus Laya's computed verdict/score.
+- **Persistence**: one row per `(job_opening_id, candidate_id)` in `laya_evaluations` (migration `015-laya-evaluations`) — computed once, not on every `GET /api/matches`.
+- **Scoring**: `blendScore` (`apps/api/src/routes/matches.ts`) adds Laya's score as a third additive term, weighted by `LAYA_WEIGHT` (default `0.3`). A pair with no persisted evaluation yet doesn't spend that weight budget at all — it falls back to the existing two-term blend exactly as before this feature shipped.
+- **Optional**: leave `LAYA_API_URL` unset to skip Laya entirely; ingestion and scoring behave exactly as before.
+
 ### 8. API surface
 
 - `GET /api/matches` — every sanitized candidate with their ranked, filtered matches.
 - `GET /api/matches/candidates/:id` — matches for one candidate.
 
-Each match includes: `similarity` (the blended score used for ranking/filtering), `semanticSimilarity` (raw whole-document cosine similarity), `skillCoverage` (`null` if the job had no required skills), `matchedSkillCount`/`requiredSkillCount`, and `matchedSkills`/`missingSkills` (labels — currently no distinction between an exact match and a relation-credited one in the response; see ADR 0010's umbrella-category proposal for where a "matched via" indicator would also apply).
+Each match includes: `similarity` (the blended score used for ranking/filtering), `semanticSimilarity` (raw whole-document cosine similarity), `skillCoverage` (`null` if the job had no required skills), `matchedSkillCount`/`requiredSkillCount`, `matchedSkills`/`missingSkills` (labels — currently no distinction between an exact match and a relation-credited one in the response; see ADR 0010's umbrella-category proposal for where a "matched via" indicator would also apply), and `layaScore`/`layaChoice`/`layaReasoning` (all `null` together if the pair hasn't been evaluated by Laya yet — see step 7.5).
 
 ## Re-processing existing jobs
 
@@ -153,7 +163,8 @@ Ran a live audit against the current DB (303 jobs, 12 sanitized candidates) afte
 | Skill formatting normalization | `packages/domain/src/skill-normalizer.ts` |
 | Skill merge/canonicalization strictness | `SKILL_MATCH_MIN_SIMILARITY` env var |
 | "These two skills should correlate" | `apps/api/src/skill-relations-seed.ts` (`SKILL_RELATION_SEEDS`) — the primary lever for most match-quality tweaks |
-| Match scoring weights/thresholds | `SKILL_OVERLAP_WEIGHT`, `MATCH_MIN_SIMILARITY`, `MATCH_TOP_K`, `ROLE_MISMATCH_PENALTY`, `NO_REQUIRED_SKILLS_PENALTY` env vars |
+| Match scoring weights/thresholds | `SKILL_OVERLAP_WEIGHT`, `MATCH_MIN_SIMILARITY`, `MATCH_TOP_K`, `ROLE_MISMATCH_PENALTY`, `NO_REQUIRED_SKILLS_PENALTY`, `LAYA_WEIGHT` env vars |
+| Laya deployment/wiring | `LAYA_API_URL`/`LAYA_API_KEY`/`LAYA_TOP_K` env vars, `docker compose --profile laya up`, `packages/semantic-match/src/laya.ts`, `apps/api/src/laya-runner.ts` |
 | Match scoring logic itself | `apps/api/src/routes/matches.ts` (`blendScore`) |
 | Role-category taxonomy/classification | `packages/domain/src/role-categories.ts` (`CATEGORY_PATTERNS`, `ADJACENT_CATEGORIES`) |
 | Anchor document template | `packages/semantic-match/src/anchor.ts` |

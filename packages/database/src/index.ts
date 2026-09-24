@@ -17,6 +17,8 @@ export type {
   SkillRelationType,
   JobSentCvTable,
   AppConfigTable,
+  LayaEvaluationTable,
+  LayaVerdict,
 } from './schema';
 export {
   openSqlite,
@@ -94,3 +96,8 @@ export {
   setAppConfig,
   deleteAppConfig,
 } from './repositories/config';
+export {
+  upsertLayaEvaluation,
+  getLayaEvaluationsForCandidate,
+} from './repositories/laya-evaluations';
+export type { LayaEvaluationView } from './repositories/laya-evaluations';

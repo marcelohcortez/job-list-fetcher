@@ -1,14 +1,19 @@
-import type { Candidate, JobMark, JobOpening } from '../api';
-import { formatDate, snippet } from './format';
+import type { Candidate, JobMark, JobOpening, LayaVerdict } from '../api';
+import { formatDate } from './format';
 
 interface JobCardProps {
   job: JobOpening;
   similarity?: number | null;
+  baseScore?: number | null;
   skillCoverage?: number | null;
   matchedSkillCount?: number;
   requiredSkillCount?: number;
   matchedSkills?: string[];
   missingSkills?: string[];
+  layaScore?: number | null;
+  layaChoice?: LayaVerdict | null;
+  layaReasoning?: string | null;
+  layaMismatchReasoning?: string | null;
   markDisabled?: boolean;
   onMark?: (job: JobOpening, mark: JobMark) => void;
   seenDisabled?: boolean;
@@ -16,6 +21,7 @@ interface JobCardProps {
   candidates?: Candidate[];
   sentCvsDisabled?: boolean;
   onChangeSentCvs?: (job: JobOpening, candidateIds: string[]) => void;
+  topMatchNames?: string[];
 }
 
 function candidateLabel(candidate: Candidate): string {
@@ -62,6 +68,52 @@ function SkillChipGroup({
   );
 }
 
+function MatchReasoning({
+  layaReasoning,
+  matchedSkills,
+}: {
+  layaReasoning?: string | null;
+  matchedSkills?: string[];
+}) {
+  return (
+    <details className="match-collapsible match-reasoning-details">
+      <summary>Why this could be a good match</summary>
+      <div className="match-collapsible-body">
+        {layaReasoning ? (
+          <p>{layaReasoning}</p>
+        ) : matchedSkills && matchedSkills.length > 0 ? (
+          <p>Matched skills: {matchedSkills.join(', ')}</p>
+        ) : (
+          <p className="muted">No match reasoning available yet.</p>
+        )}
+      </div>
+    </details>
+  );
+}
+
+function MatchMismatch({
+  layaMismatchReasoning,
+  missingSkills,
+}: {
+  layaMismatchReasoning?: string | null;
+  missingSkills?: string[];
+}) {
+  return (
+    <details className="match-collapsible match-mismatch-details">
+      <summary>Possible mismatch</summary>
+      <div className="match-collapsible-body">
+        {layaMismatchReasoning ? (
+          <p>{layaMismatchReasoning}</p>
+        ) : missingSkills && missingSkills.length > 0 ? (
+          <p>Missing skills: {missingSkills.join(', ')}</p>
+        ) : (
+          <p className="muted">No obvious mismatches identified.</p>
+        )}
+      </div>
+    </details>
+  );
+}
+
 function SkillBreakdown({
   matchedSkills,
   missingSkills,
@@ -92,11 +144,16 @@ function SkillBreakdown({
 export function JobCard({
   job,
   similarity,
+  baseScore,
   skillCoverage,
   matchedSkillCount,
   requiredSkillCount,
   matchedSkills,
   missingSkills,
+  layaScore,
+  layaChoice,
+  layaReasoning,
+  layaMismatchReasoning,
   markDisabled,
   onMark,
   seenDisabled,
@@ -104,6 +161,7 @@ export function JobCard({
   candidates,
   sentCvsDisabled,
   onChangeSentCvs,
+  topMatchNames,
 }: JobCardProps) {
   const markButton = (
     mark: JobMark,
@@ -111,24 +169,31 @@ export function JobCard({
     inactiveLabel: string,
     className: string,
     disabled?: boolean,
+    onClick?: () => void,
   ) => (
     <button
       className={job.userMark === mark ? `mark active ${className}` : 'mark'}
       aria-pressed={job.userMark === mark}
       disabled={markDisabled || disabled}
-      onClick={() => onMark?.(job, mark)}
+      onClick={() => {
+        onClick?.();
+        onMark?.(job, mark);
+      }}
     >
       {job.userMark === mark ? activeLabel : inactiveLabel}
     </button>
   );
 
-  const hasCvSent = (job.sentCvIds?.length ?? 0) > 0;
-
   return (
-    <li className={job.seenAt ? 'job job-seen' : 'job'}>
+    <li className={job.userMark === 'dead' ? 'job job-dead' : job.seenAt ? 'job job-seen' : 'job'}>
       <div className="job-head">
         <h2>{job.title}</h2>
-        {job.seenAt && <span className="status status-seen">Seen</span>}
+        {job.userMark === 'dead' && (
+          <span className="status status-dead">Dead</span>
+        )}
+        {job.userMark !== 'dead' && job.seenAt && (
+          <span className="status status-seen">Seen</span>
+        )}
       </div>
       <div className="meta">
         <span className="company">{job.companyName}</span>
@@ -138,43 +203,56 @@ export function JobCard({
           <span>Published {formatDate(job.publishedAt)}</span>
         )}
       </div>
-      {similarity != null && (
+      {(baseScore ?? similarity) != null && (
         <p className="match">
           <span className="match-score">
-            {Math.round(similarity * 100)}% match
+            {Math.round((baseScore ?? similarity)! * 100)}% skill/vector match
           </span>
-          {skillCoverage != null && requiredSkillCount ? (
-            <span className="match-counts">
-              {' '}
-              · {matchedSkillCount}/{requiredSkillCount} required skills
-            </span>
-          ) : null}
+        </p>
+      )}
+      {layaScore != null && layaChoice != null && (
+        <p className="match laya-match">
+          <span className="match-score">{Math.round(layaScore * 100)}% Laya match</span>
+          <span className={`laya-choice laya-choice-${layaChoice}`}> {layaChoice}</span>
+        </p>
+      )}
+      {similarity != null && layaScore != null && (
+        <p className="match overall-match">
+          <span className="match-score">{Math.round(similarity * 100)}% overall match</span>
         </p>
       )}
       {((matchedSkills && matchedSkills.length > 0) ||
         (missingSkills && missingSkills.length > 0)) && (
         <SkillBreakdown matchedSkills={matchedSkills} missingSkills={missingSkills} />
       )}
-      {job.description && (
-        <p className="description">{snippet(job.description)}</p>
+      {(matchedSkills || missingSkills || layaReasoning) && (
+        <div className="match-collapsibles">
+          <MatchReasoning layaReasoning={layaReasoning} matchedSkills={matchedSkills} />
+          <MatchMismatch
+            layaMismatchReasoning={layaMismatchReasoning}
+            missingSkills={missingSkills}
+          />
+        </div>
       )}
       {job.salaryText && <p className="salary">{job.salaryText}</p>}
       <div className="links">
         {job.sourceUrl && (
-          <a href={job.sourceUrl} target="_blank" rel="noreferrer noopener">
-            View original post
-          </a>
-        )}
-        {job.applicationUrl && job.applicationUrl !== job.sourceUrl && (
           <a
-            href={job.applicationUrl}
+            className="btn-view-original"
+            href={job.sourceUrl}
             target="_blank"
             rel="noreferrer noopener"
           >
-            Apply
+            View original post
           </a>
         )}
       </div>
+      {topMatchNames && topMatchNames.length > 0 && (
+        <p className="top-matches">
+          <span className="top-matches-label">Likely matches:</span>{' '}
+          {topMatchNames.join(', ')}
+        </p>
+      )}
       {onChangeSentCvs && candidates && (
         <div className="sent-cvs">
           <span className="sent-cvs-label">CVs sent</span>
@@ -228,14 +306,9 @@ export function JobCard({
             </button>
           )}
           {onMark &&
-            markButton('applied', 'Applied', 'Apply', 'applied', !hasCvSent)}
+            markButton('saved', 'Saved', 'Save', 'saved')}
           {onMark &&
-            markButton(
-              'not_interested',
-              'Not interested',
-              'Interested',
-              'not-interested',
-            )}
+            markButton('dead', 'Dead', 'Mark dead', 'dead')}
         </div>
       )}
     </li>

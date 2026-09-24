@@ -1,4 +1,4 @@
-export type JobMark = 'applied' | 'not_interested';
+export type JobMark = 'applied' | 'saved' | 'dead';
 
 export interface JobOpening {
   id: string;
@@ -85,21 +85,50 @@ export interface Candidate {
   updatedAt: string;
 }
 
+export type LayaVerdict = 'strong' | 'moderate' | 'weak';
+
 export interface MatchedJob extends JobOpening {
   similarity: number;
+  baseScore: number;
   semanticSimilarity: number;
   skillCoverage: number | null;
   matchedSkillCount: number;
   requiredSkillCount: number;
   matchedSkills: string[];
   missingSkills: string[];
+  layaScore: number | null;
+  layaChoice: LayaVerdict | null;
+  layaReasoning: string | null;
+  layaMismatchReasoning: string | null;
 }
 
 export interface CandidateMatches {
   candidateId: string;
   candidateName: string | null;
+  candidateTitle: string | null;
   fileName: string;
   matches: MatchedJob[];
+}
+
+export function buildTopMatchesByJobId(
+  candidateMatches: CandidateMatches[],
+  limit = 3,
+): Record<string, string[]> {
+  const byJob: Record<string, { name: string; similarity: number }[]> = {};
+  for (const entry of candidateMatches) {
+    const name = entry.candidateName || entry.fileName;
+    for (const match of entry.matches) {
+      (byJob[match.id] ??= []).push({ name, similarity: match.similarity });
+    }
+  }
+  const result: Record<string, string[]> = {};
+  for (const [jobId, list] of Object.entries(byJob)) {
+    result[jobId] = list
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, limit)
+      .map((entry) => entry.name);
+  }
+  return result;
 }
 
 export async function fetchSources(): Promise<string[]> {

@@ -1,6 +1,8 @@
 # Laya Integration Plan (LLM-Judge Re-ranking Layer)
 
-Status: **ready to build**. Open questions resolved (see "Decisions" below). Not yet an ADR; promote to one once Phase 1-4 ship and weights are validated against real match quality (see [ADR 0009](adr/0009-skill-taxonomy-and-weighted-matching.md)/[ADR 0012](adr/0012-candidate-role-category-and-mismatch-penalty.md) for the format).
+Status: **implemented (Phases 0-6)**. See [matching_pipeline.md](matching_pipeline.md) step 7.5 for the shipped behavior. Not yet an ADR; promote to one once `LAYA_WEIGHT` is validated against real match quality (see [ADR 0009](adr/0009-skill-taxonomy-and-weighted-matching.md)/[ADR 0012](adr/0012-candidate-role-category-and-mismatch-penalty.md) for the format).
+
+**Implementation note on reasoning (revises Decision 6 below)**: Laya's real API (`https://github.com/NandhaKishorM/laya`) turned out to be a non-autoregressive BERT classifier, not a generative model — it returns typed `score`/`choice`/`confidence` labels but never free text. The `reasoning` string described below is generated separately, by the existing local Ollama model (`createOllamaReasoner` in `packages/semantic-match/src/laya.ts`), given the job/CV text plus Laya's computed verdict/score. Everything else below (scoring integration, persistence, UI split) shipped as originally planned.
 
 ## Decisions
 

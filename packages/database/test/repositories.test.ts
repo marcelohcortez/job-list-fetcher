@@ -269,9 +269,9 @@ describe('repositories', () => {
       [jobOpeningId]: { mark: 'applied', seenAt: null },
     });
 
-    await setUserMark(db, jobOpeningId, 'not_interested');
+    await setUserMark(db, jobOpeningId, 'saved');
     expect(await getUserMarks(db, [jobOpeningId])).toEqual({
-      [jobOpeningId]: { mark: 'not_interested', seenAt: null },
+      [jobOpeningId]: { mark: 'saved', seenAt: null },
     });
 
     await setUserMark(db, jobOpeningId, null);

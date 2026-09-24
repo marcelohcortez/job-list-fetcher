@@ -15,6 +15,8 @@ function fakeVectorStore(overrides: Partial<VectorStore> = {}): VectorStore {
     upsertCandidate: vi.fn(),
     deleteCandidate: vi.fn(),
     getCandidateEmbedding: vi.fn(),
+    getJobEmbedding: vi.fn().mockResolvedValue(null),
+    queryCandidatesForJob: vi.fn().mockResolvedValue([]),
     queryJobsForCandidate: vi.fn(),
     upsertRolePhrase: vi.fn(),
     queryNearestRolePhrase: vi.fn(),

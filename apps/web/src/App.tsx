@@ -2,11 +2,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined';
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
+import BookmarkBorderOutlinedIcon from '@mui/icons-material/BookmarkBorderOutlined';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined';
 import TrackChangesOutlinedIcon from '@mui/icons-material/TrackChangesOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import {
+  buildTopMatchesByJobId,
+  fetchAllMatches,
   fetchCandidates,
   fetchIngestionRuns,
   fetchJobs,
@@ -21,12 +25,21 @@ import {
   type JobOpening,
 } from './api';
 import { JobCard } from './components/JobCard';
+import { matchesJobSearch } from './components/format';
 import { UploadCvTab } from './UploadCvTab';
 import { UploadCvsTab } from './UploadCvsTab';
 import { MatchesTab } from './MatchesTab';
 import { ConfigTab } from './ConfigTab';
 
-type Tab = 'jobs' | 'applied' | 'upload-cv' | 'upload-cvs' | 'matches' | 'config';
+type Tab =
+  | 'jobs'
+  | 'applied'
+  | 'saved'
+  | 'history'
+  | 'upload-cv'
+  | 'upload-cvs'
+  | 'matches'
+  | 'config';
 
 interface Summary {
   counts: IngestionRun['counts'];
@@ -42,6 +55,8 @@ const NAV_ITEMS: {
 }[] = [
   { id: 'jobs', path: '/jobs', label: 'Openings', Icon: WorkOutlineOutlinedIcon },
   { id: 'applied', path: '/applied', label: 'Applied', Icon: TaskAltOutlinedIcon },
+  { id: 'saved', path: '/saved', label: 'Saved', Icon: BookmarkBorderOutlinedIcon },
+  { id: 'history', path: '/history', label: 'History', Icon: HistoryOutlinedIcon },
   { id: 'upload-cv', path: '/upload-cv', label: 'Upload CV', Icon: UploadFileOutlinedIcon },
   { id: 'upload-cvs', path: '/upload-cvs', label: 'Upload CVs', Icon: LibraryBooksOutlinedIcon },
   { id: 'matches', path: '/matches', label: 'Matches', Icon: TrackChangesOutlinedIcon },
@@ -57,6 +72,14 @@ const TAB_TITLES: Record<Tab, { title: string; subtitle: string }> = {
   applied: {
     title: 'Applied',
     subtitle: 'Job openings you have already applied to.',
+  },
+  saved: {
+    title: 'Saved',
+    subtitle: 'Job openings you have marked as interested.',
+  },
+  history: {
+    title: 'History',
+    subtitle: 'Job openings you have marked as seen or dead.',
   },
   'upload-cv': {
     title: 'Upload CV',
@@ -83,8 +106,6 @@ function JobsTab({
   knownSources,
   loading,
   error,
-  query,
-  onSearch,
   pendingMarks,
   onMark,
   pendingSeen,
@@ -92,13 +113,12 @@ function JobsTab({
   candidates,
   pendingSentCvs,
   onChangeSentCvs,
+  topMatchesByJobId,
 }: {
   jobs: JobOpening[];
   knownSources: string[];
   loading: boolean;
   error: string | null;
-  query: string;
-  onSearch: (term: string) => void;
   pendingMarks: Record<string, boolean>;
   onMark: (job: JobOpening, mark: JobMark) => void;
   pendingSeen: Record<string, boolean>;
@@ -106,13 +126,18 @@ function JobsTab({
   candidates: Candidate[];
   pendingSentCvs: Record<string, boolean>;
   onChangeSentCvs: (job: JobOpening, candidateIds: string[]) => void;
+  topMatchesByJobId: Record<string, string[]>;
 }) {
   const [activeSource, setActiveSource] = useState<string>(ALL_SOURCES);
+  const [search, setSearch] = useState('');
 
   const now = Date.now();
   const oneYearAgo = now - 365 * 24 * 60 * 60 * 1000;
   const activeJobs = jobs.filter(
     (job) =>
+      job.userMark !== 'dead' &&
+      job.userMark !== 'applied' &&
+      !job.seenAt &&
       (!job.deadlineAt || new Date(job.deadlineAt).getTime() >= now) &&
       (!job.publishedAt || new Date(job.publishedAt).getTime() >= oneYearAgo),
   );
@@ -128,19 +153,22 @@ function JobsTab({
     }
   }, [sourcesKey]);
 
-  const visibleJobs =
+  const sourceJobs =
     activeSource === ALL_SOURCES
       ? activeJobs
       : activeJobs.filter((job) => job.sourceName === activeSource);
+  const visibleJobs = sourceJobs.filter((job) =>
+    matchesJobSearch(job, search, candidates),
+  );
 
   return (
     <>
       <div className="toolbar">
         <input
           type="search"
-          value={query}
-          placeholder="Search title, company or description"
-          onChange={(e) => onSearch(e.target.value)}
+          value={search}
+          placeholder="Search title, company, description or employee"
+          onChange={(e) => setSearch(e.target.value)}
           aria-label="Search jobs"
         />
         <span className="count">
@@ -210,6 +238,7 @@ function JobsTab({
               candidates={candidates}
               sentCvsDisabled={pendingSentCvs[job.id]}
               onChangeSentCvs={onChangeSentCvs}
+              topMatchNames={topMatchesByJobId[job.id]}
             />
           ))}
         </ul>
@@ -229,6 +258,7 @@ function AppliedTab({
   candidates,
   pendingSentCvs,
   onChangeSentCvs,
+  topMatchesByJobId,
 }: {
   jobs: JobOpening[];
   loading: boolean;
@@ -240,12 +270,23 @@ function AppliedTab({
   candidates: Candidate[];
   pendingSentCvs: Record<string, boolean>;
   onChangeSentCvs: (job: JobOpening, candidateIds: string[]) => void;
+  topMatchesByJobId: Record<string, string[]>;
 }) {
-  const appliedJobs = jobs.filter((job) => job.userMark === 'applied');
+  const [search, setSearch] = useState('');
+  const appliedJobs = jobs
+    .filter((job) => job.userMark === 'applied')
+    .filter((job) => matchesJobSearch(job, search, candidates));
 
   return (
     <>
       <div className="toolbar">
+        <input
+          type="search"
+          value={search}
+          placeholder="Search title, company, description or employee"
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search applied jobs"
+        />
         <span className="count">
           {appliedJobs.length} job{appliedJobs.length === 1 ? '' : 's'}
         </span>
@@ -277,6 +318,221 @@ function AppliedTab({
               candidates={candidates}
               sentCvsDisabled={pendingSentCvs[job.id]}
               onChangeSentCvs={onChangeSentCvs}
+              topMatchNames={topMatchesByJobId[job.id]}
+            />
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+function SavedTab({
+  jobs,
+  loading,
+  error,
+  pendingMarks,
+  onMark,
+  pendingSeen,
+  onToggleSeen,
+  candidates,
+  pendingSentCvs,
+  onChangeSentCvs,
+  topMatchesByJobId,
+}: {
+  jobs: JobOpening[];
+  loading: boolean;
+  error: string | null;
+  pendingMarks: Record<string, boolean>;
+  onMark: (job: JobOpening, mark: JobMark) => void;
+  pendingSeen: Record<string, boolean>;
+  onToggleSeen: (job: JobOpening) => void;
+  candidates: Candidate[];
+  pendingSentCvs: Record<string, boolean>;
+  onChangeSentCvs: (job: JobOpening, candidateIds: string[]) => void;
+  topMatchesByJobId: Record<string, string[]>;
+}) {
+  const [search, setSearch] = useState('');
+  const savedJobs = jobs
+    .filter((job) => job.userMark === 'saved')
+    .filter((job) => matchesJobSearch(job, search, candidates));
+
+  return (
+    <>
+      <div className="toolbar">
+        <input
+          type="search"
+          value={search}
+          placeholder="Search title, company, description or employee"
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search saved jobs"
+        />
+        <span className="count">
+          {savedJobs.length} job{savedJobs.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      {error && (
+        <div className="error" role="alert">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <p className="muted">Loading jobs...</p>
+      ) : savedJobs.length === 0 ? (
+        <p className="muted">
+          No saved openings yet. Click &quot;Save&quot; on an Opening from the
+          Openings or Matches tab.
+        </p>
+      ) : (
+        <ul className="jobs">
+          {savedJobs.map((job) => (
+            <JobCard
+              key={job.id}
+              job={job}
+              markDisabled={pendingMarks[job.id]}
+              onMark={onMark}
+              seenDisabled={pendingSeen[job.id]}
+              onToggleSeen={onToggleSeen}
+              candidates={candidates}
+              sentCvsDisabled={pendingSentCvs[job.id]}
+              onChangeSentCvs={onChangeSentCvs}
+              topMatchNames={topMatchesByJobId[job.id]}
+            />
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+function HistoryTab({
+  jobs,
+  loading,
+  error,
+  pendingMarks,
+  onMark,
+  pendingSeen,
+  onToggleSeen,
+  candidates,
+  pendingSentCvs,
+  onChangeSentCvs,
+  topMatchesByJobId,
+}: {
+  jobs: JobOpening[];
+  loading: boolean;
+  error: string | null;
+  pendingMarks: Record<string, boolean>;
+  onMark: (job: JobOpening, mark: JobMark) => void;
+  pendingSeen: Record<string, boolean>;
+  onToggleSeen: (job: JobOpening) => void;
+  candidates: Candidate[];
+  pendingSentCvs: Record<string, boolean>;
+  onChangeSentCvs: (job: JobOpening, candidateIds: string[]) => void;
+  topMatchesByJobId: Record<string, string[]>;
+}) {
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'seen' | 'dead'>(
+    'all',
+  );
+  const threeMonthsAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
+  const historyJobs = jobs
+    .filter(
+      (job) =>
+        job.userMark === 'dead' ||
+        (job.seenAt && new Date(job.seenAt).getTime() >= threeMonthsAgo),
+    )
+    .filter((job) => matchesJobSearch(job, search, candidates));
+
+  const seenCount = historyJobs.filter(
+    (job) => job.userMark !== 'dead' && job.seenAt,
+  ).length;
+  const deadCount = historyJobs.filter((job) => job.userMark === 'dead').length;
+
+  const filteredHistoryJobs = historyJobs.filter((job) => {
+    if (statusFilter === 'seen') return job.userMark !== 'dead' && job.seenAt;
+    if (statusFilter === 'dead') return job.userMark === 'dead';
+    return true;
+  });
+
+  return (
+    <>
+      <div className="toolbar">
+        <input
+          type="search"
+          value={search}
+          placeholder="Search title, company, description or employee"
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search history"
+        />
+        <span className="count">
+          {filteredHistoryJobs.length} job
+          {filteredHistoryJobs.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      <div className="source-tabs" role="tablist" aria-label="History status">
+        <button
+          role="tab"
+          aria-selected={statusFilter === 'all'}
+          className={
+            statusFilter === 'all' ? 'source-tab active' : 'source-tab'
+          }
+          onClick={() => setStatusFilter('all')}
+        >
+          All ({historyJobs.length})
+        </button>
+        <button
+          role="tab"
+          aria-selected={statusFilter === 'seen'}
+          className={
+            statusFilter === 'seen' ? 'source-tab active' : 'source-tab'
+          }
+          onClick={() => setStatusFilter('seen')}
+        >
+          Seen ({seenCount})
+        </button>
+        <button
+          role="tab"
+          aria-selected={statusFilter === 'dead'}
+          className={
+            statusFilter === 'dead' ? 'source-tab active' : 'source-tab'
+          }
+          onClick={() => setStatusFilter('dead')}
+        >
+          Dead ({deadCount})
+        </button>
+      </div>
+
+      {error && (
+        <div className="error" role="alert">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <p className="muted">Loading jobs...</p>
+      ) : filteredHistoryJobs.length === 0 ? (
+        <p className="muted">
+          {historyJobs.length === 0
+            ? 'No history yet. Mark an opening "Seen" or "Dead" to move it here.'
+            : 'No jobs match this filter.'}
+        </p>
+      ) : (
+        <ul className="jobs">
+          {filteredHistoryJobs.map((job) => (
+            <JobCard
+              key={job.id}
+              job={job}
+              markDisabled={pendingMarks[job.id]}
+              onMark={onMark}
+              seenDisabled={pendingSeen[job.id]}
+              onToggleSeen={onToggleSeen}
+              candidates={candidates}
+              sentCvsDisabled={pendingSentCvs[job.id]}
+              onChangeSentCvs={onChangeSentCvs}
+              topMatchNames={topMatchesByJobId[job.id]}
             />
           ))}
         </ul>
@@ -295,18 +551,20 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
   const [summary, setSummary] = useState<Summary | null>(null);
   const [pendingMarks, setPendingMarks] = useState<Record<string, boolean>>({});
   const [pendingSeen, setPendingSeen] = useState<Record<string, boolean>>({});
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [pendingSentCvs, setPendingSentCvs] = useState<Record<string, boolean>>({});
+  const [topMatchesByJobId, setTopMatchesByJobId] = useState<
+    Record<string, string[]>
+  >({});
 
-  const load = useCallback(async (term?: string) => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchJobs(term || undefined);
+      const res = await fetchJobs();
       setJobs(res.data);
     } catch (err) {
       setError((err as Error).message);
@@ -331,6 +589,12 @@ export default function App() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    fetchAllMatches()
+      .then((matches) => setTopMatchesByJobId(buildTopMatchesByJobId(matches)))
+      .catch(() => {});
+  }, []);
+
   // A refresh triggered before a page reload keeps running server-side even
   // though the client that started it is gone - pick it back up here so the
   // button stays disabled and reload can't fire a second, overlapping run.
@@ -348,7 +612,7 @@ export default function App() {
         const [current] = await fetchIngestionRuns().catch(() => []);
         if (cancelled || !current || current.status === 'running') continue;
         setSummary({ counts: current.counts, warnings: [], ranAt: new Date() });
-        await load(query || undefined);
+        await load();
         setRefreshing(false);
         break;
       }
@@ -365,17 +629,12 @@ export default function App() {
     try {
       const run = await triggerIngestion();
       setSummary({ counts: run.counts, warnings: run.warnings, ranAt: new Date() });
-      await load(query || undefined);
+      await load();
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setRefreshing(false);
     }
-  };
-
-  const handleSearch = (term: string) => {
-    setQuery(term);
-    void load(term || undefined);
   };
 
   const handleMark = async (job: JobOpening, mark: JobMark) => {
@@ -432,23 +691,43 @@ export default function App() {
     }
   };
 
+  const handleMatchesMarkChange = (jobId: string, mark: JobMark | null) => {
+    setJobs((prev) =>
+      prev.map((j) => (j.id === jobId ? { ...j, userMark: mark } : j)),
+    );
+  };
+
   const handleChangeSentCvs = async (job: JobOpening, candidateIds: string[]) => {
     if (pendingSentCvs[job.id]) return;
     const current = job.sentCvIds;
+    const currentMark = job.userMark;
+    const shouldMarkApplied = current.length === 0 && candidateIds.length > 0 && currentMark !== 'applied';
 
     setPendingSentCvs((prev) => ({ ...prev, [job.id]: true }));
     setJobs((prev) =>
-      prev.map((j) => (j.id === job.id ? { ...j, sentCvIds: candidateIds } : j)),
+      prev.map((j) =>
+        j.id === job.id
+          ? { ...j, sentCvIds: candidateIds, userMark: shouldMarkApplied ? 'applied' : j.userMark }
+          : j,
+      ),
     );
     try {
       const saved = await setJobSentCvs(job.id, candidateIds);
       setJobs((prev) =>
         prev.map((j) => (j.id === job.id ? { ...j, sentCvIds: saved } : j)),
       );
+      if (shouldMarkApplied) {
+        const savedMark = await setJobMark(job.id, 'applied');
+        setJobs((prev) =>
+          prev.map((j) => (j.id === job.id ? { ...j, userMark: savedMark } : j)),
+        );
+      }
     } catch (err) {
       setError((err as Error).message);
       setJobs((prev) =>
-        prev.map((j) => (j.id === job.id ? { ...j, sentCvIds: current } : j)),
+        prev.map((j) =>
+          j.id === job.id ? { ...j, sentCvIds: current, userMark: currentMark } : j,
+        ),
       );
     } finally {
       setPendingSentCvs((prev) => {
@@ -531,8 +810,6 @@ export default function App() {
                   knownSources={knownSources}
                   loading={loading}
                   error={error}
-                  query={query}
-                  onSearch={handleSearch}
                   pendingMarks={pendingMarks}
                   onMark={handleMark}
                   pendingSeen={pendingSeen}
@@ -540,6 +817,7 @@ export default function App() {
                   candidates={candidates}
                   pendingSentCvs={pendingSentCvs}
                   onChangeSentCvs={handleChangeSentCvs}
+                  topMatchesByJobId={topMatchesByJobId}
                 />
               }
             />
@@ -557,12 +835,52 @@ export default function App() {
                   candidates={candidates}
                   pendingSentCvs={pendingSentCvs}
                   onChangeSentCvs={handleChangeSentCvs}
+                  topMatchesByJobId={topMatchesByJobId}
+                />
+              }
+            />
+            <Route
+              path="/saved"
+              element={
+                <SavedTab
+                  jobs={jobs}
+                  loading={loading}
+                  error={error}
+                  pendingMarks={pendingMarks}
+                  onMark={handleMark}
+                  pendingSeen={pendingSeen}
+                  onToggleSeen={handleToggleSeen}
+                  candidates={candidates}
+                  pendingSentCvs={pendingSentCvs}
+                  onChangeSentCvs={handleChangeSentCvs}
+                  topMatchesByJobId={topMatchesByJobId}
+                />
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <HistoryTab
+                  jobs={jobs}
+                  loading={loading}
+                  error={error}
+                  pendingMarks={pendingMarks}
+                  onMark={handleMark}
+                  pendingSeen={pendingSeen}
+                  onToggleSeen={handleToggleSeen}
+                  candidates={candidates}
+                  pendingSentCvs={pendingSentCvs}
+                  onChangeSentCvs={handleChangeSentCvs}
+                  topMatchesByJobId={topMatchesByJobId}
                 />
               }
             />
             <Route path="/upload-cv" element={<UploadCvTab />} />
             <Route path="/upload-cvs" element={<UploadCvsTab />} />
-            <Route path="/matches" element={<MatchesTab />} />
+            <Route
+              path="/matches"
+              element={<MatchesTab onMarkChange={handleMatchesMarkChange} />}
+            />
             <Route path="/config" element={<ConfigTab />} />
             <Route path="*" element={<Navigate to="/jobs" replace />} />
           </Routes>

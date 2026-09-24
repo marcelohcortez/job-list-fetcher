@@ -38,11 +38,13 @@ export interface RunResult {
 export type EmbedJob = (jobOpeningId: string, rawText: string) => Promise<void>;
 
 /**
- * Whether a job title falls within the platform's target roles. Injected so
- * production wiring can layer a vector similarity check on top of the exact
- * `matchesTargetTitle` regex match - tests default to the regex alone.
+ * Whether a job falls within the platform's target roles. Injected so
+ * production wiring can layer a vector similarity check (over the title
+ * plus description, when available - see `role-scope.ts`) on top of the
+ * exact `matchesTargetTitle` regex match - tests default to the regex over
+ * the title alone.
  */
-export type TitleScopeCheck = (title: string) => Promise<boolean>;
+export type TitleScopeCheck = (title: string, description?: string | null) => Promise<boolean>;
 
 export interface RunOptions {
   now?: Date;
@@ -138,7 +140,7 @@ export async function runIngestion(
       }
       let inScope: boolean;
       try {
-        inScope = await isTitleInScope(record.title);
+        inScope = await isTitleInScope(record.title, record.description);
       } catch (err) {
         // The vector-similarity fallback depends on Ollama/Chroma being
         // reachable; a hiccup there must not abort the whole run and strand

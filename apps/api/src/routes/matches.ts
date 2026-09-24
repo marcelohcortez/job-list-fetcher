@@ -1,12 +1,19 @@
 import { Hono } from 'hono';
 import type { Kysely } from 'kysely';
-import type { JobDb, JobRequiredSkillLabel, SkillRelationPartner } from '@job-fetcher/database';
+import type {
+  JobDb,
+  JobRequiredSkillLabel,
+  LayaVerdict,
+  SkillRelationPartner,
+  UserMark,
+} from '@job-fetcher/database';
 import {
   getCandidateSkillIds,
   getJobById,
   getJobRequiredSkillLabels,
   getJobRoleCategories,
   getJobSeniorityLevels,
+  getLayaEvaluationsForCandidate,
   getSkillRelationsFor,
   getCandidate,
   listCandidates,
@@ -74,6 +81,15 @@ export interface MatchesConfig {
    * Defaults to 3 when omitted.
    */
   minSkillsForFullConfidence?: number;
+  /**
+   * Weight (0-1) given to Laya's evaluation score in the final blend, on top
+   * of the existing skill-coverage/semantic-similarity terms (see
+   * Docs/laya-integration-plan.md, Decision 3: additive, current pipeline
+   * stays the dominant base). A pair with no persisted Laya evaluation yet
+   * falls back to the current two-term blend, renormalized so it isn't
+   * unfairly docked for missing data. Defaults to 0.3 when omitted.
+   */
+  layaWeight?: number;
 }
 
 const DEFAULT_SKILL_OVERLAP_WEIGHT = 0.6;
@@ -81,16 +97,22 @@ const DEFAULT_ROLE_MISMATCH_PENALTY = 0.5;
 const DEFAULT_NO_REQUIRED_SKILLS_PENALTY = 0.75;
 const DEFAULT_SENIORITY_MISMATCH_PENALTY = 0.7;
 const DEFAULT_MIN_SKILLS_FOR_FULL_CONFIDENCE = 3;
+const DEFAULT_LAYA_WEIGHT = 0.3;
 
 type JobWithSimilarity = Omit<JobOpening, 'rawPayload'> & {
   similarity: number;
+  baseScore: number;
   semanticSimilarity: number;
   skillCoverage: number | null;
   matchedSkillCount: number;
   requiredSkillCount: number;
   matchedSkills: string[];
   missingSkills: string[];
-  userMark: 'applied' | 'not_interested' | null;
+  layaScore: number | null;
+  layaChoice: LayaVerdict | null;
+  layaReasoning: string | null;
+  layaMismatchReasoning: string | null;
+  userMark: UserMark | null;
   seenAt: string | null;
   sentCvIds: string[];
 };
@@ -99,15 +121,20 @@ function publicJob(
   job: JobOpening,
   score: {
     similarity: number;
+    baseScore: number;
     semanticSimilarity: number;
     skillCoverage: number | null;
     matchedSkillCount: number;
     requiredSkillCount: number;
     matchedSkills: string[];
     missingSkills: string[];
+    layaScore: number | null;
+    layaChoice: LayaVerdict | null;
+    layaReasoning: string | null;
+    layaMismatchReasoning: string | null;
   },
   mark: {
-    userMark: 'applied' | 'not_interested' | null;
+    userMark: UserMark | null;
     seenAt: string | null;
     sentCvIds: string[];
   },
@@ -184,8 +211,10 @@ function blendScore(
   },
   noRequiredSkillsPenalty: number,
   minSkillsForFullConfidence: number,
+  laya: { score: number | null; weight: number },
 ): {
   score: number;
+  baseScore: number;
   skillCoverage: number | null;
   matchedSkillCount: number;
   matchedSkills: string[];
@@ -201,10 +230,23 @@ function blendScore(
     ? 1
     : seniorityLevels.mismatchPenalty;
   const categoryMultiplier = roleMultiplier * seniorityMultiplier;
+  // Only spend the LAYA_WEIGHT budget when this pair actually has a
+  // persisted evaluation - otherwise its share folds back into whichever
+  // signal it would have discounted, so a not-yet-evaluated pair isn't
+  // unfairly docked a third of its score for missing data (see
+  // Docs/laya-integration-plan.md "Scoring integration").
+  const effectiveLayaWeight = laya.score !== null ? laya.weight : 0;
+  const layaTerm = effectiveLayaWeight * (laya.score ?? 0);
 
   if (jobSkills.length === 0) {
     return {
-      score: semanticSimilarity * categoryMultiplier * noRequiredSkillsPenalty,
+      score:
+        (semanticSimilarity * (1 - effectiveLayaWeight) + layaTerm) *
+        categoryMultiplier *
+        noRequiredSkillsPenalty,
+      // Vector-only score, unaffected by `layaWeight` - what `score` would be
+      // with no Laya evaluation, so the UI can show the two signals separately.
+      baseScore: semanticSimilarity * categoryMultiplier * noRequiredSkillsPenalty,
       skillCoverage: null,
       matchedSkillCount: 0,
       matchedSkills: [],
@@ -236,12 +278,20 @@ function blendScore(
   const skillCoverage = totalCredit / jobSkills.length;
   const confidence = Math.min(1, jobSkills.length / minSkillsForFullConfidence);
   const effectiveSkillOverlapWeight = skillOverlapWeight * confidence;
+  const semanticWeight = Math.max(0, 1 - effectiveSkillOverlapWeight - effectiveLayaWeight);
   const score =
-    (effectiveSkillOverlapWeight * skillCoverage +
-      (1 - effectiveSkillOverlapWeight) * semanticSimilarity) *
+    (effectiveSkillOverlapWeight * skillCoverage + semanticWeight * semanticSimilarity + layaTerm) *
+    categoryMultiplier;
+  // Same blend, recomputed with laya's weight folded back into semantic
+  // similarity - i.e. what `score` would be with no Laya evaluation - so the
+  // UI can show the skill/vector match and the Laya match separately.
+  const baseSemanticWeight = Math.max(0, 1 - effectiveSkillOverlapWeight);
+  const baseScore =
+    (effectiveSkillOverlapWeight * skillCoverage + baseSemanticWeight * semanticSimilarity) *
     categoryMultiplier;
   return {
     score,
+    baseScore,
     skillCoverage,
     matchedSkillCount: matched.length,
     matchedSkills: matched,
@@ -284,10 +334,12 @@ async function matchesForCandidate(
   const jobIds = entries.map((entry) => entry.job.id);
   const marks = await getUserMarks(db, jobIds);
   const sentCvs = await getSentCvIds(db, jobIds);
+  const layaEvaluations = await getLayaEvaluationsForCandidate(db, candidateId, jobIds);
 
   const jobs: JobWithSimilarity[] = [];
   for (const { hit, job, jobSkills } of entries) {
-    const { score, skillCoverage, matchedSkillCount, matchedSkills, missingSkills } = blendScore(
+    const layaEvaluation = layaEvaluations.get(job.id) ?? null;
+    const { score, baseScore, skillCoverage, matchedSkillCount, matchedSkills, missingSkills } = blendScore(
       hit.similarity,
       candidateSkillIds,
       jobSkills,
@@ -305,6 +357,7 @@ async function matchesForCandidate(
       },
       config.noRequiredSkillsPenalty ?? DEFAULT_NO_REQUIRED_SKILLS_PENALTY,
       config.minSkillsForFullConfidence ?? DEFAULT_MIN_SKILLS_FOR_FULL_CONFIDENCE,
+      { score: layaEvaluation?.score ?? null, weight: config.layaWeight ?? DEFAULT_LAYA_WEIGHT },
     );
     if (score < config.minSimilarity) continue;
     jobs.push(
@@ -312,12 +365,17 @@ async function matchesForCandidate(
         job,
         {
           similarity: score,
+          baseScore,
           semanticSimilarity: hit.similarity,
           skillCoverage,
           matchedSkillCount,
           requiredSkillCount: jobSkills.length,
           matchedSkills,
           missingSkills,
+          layaScore: layaEvaluation?.score ?? null,
+          layaChoice: layaEvaluation?.choice ?? null,
+          layaReasoning: layaEvaluation?.reasoning ?? null,
+          layaMismatchReasoning: layaEvaluation?.mismatchReasoning ?? null,
         },
         {
           userMark: marks[job.id]?.mark ?? null,
@@ -345,6 +403,7 @@ export function matchesRoutes(
       candidates.map(async (candidate) => ({
         candidateId: candidate.id,
         candidateName: candidate.candidate_name,
+        candidateTitle: candidate.candidate_title,
         fileName: candidate.file_name,
         matches: await matchesForCandidate(db, pipeline, config, candidate.id),
       })),
@@ -361,6 +420,7 @@ export function matchesRoutes(
         data: {
           candidateId: candidate.id,
           candidateName: candidate.candidate_name,
+          candidateTitle: candidate.candidate_title,
           fileName: candidate.file_name,
           matches: [],
         },
@@ -371,6 +431,7 @@ export function matchesRoutes(
       data: {
         candidateId: candidate.id,
         candidateName: candidate.candidate_name,
+        candidateTitle: candidate.candidate_title,
         fileName: candidate.file_name,
         matches,
       },

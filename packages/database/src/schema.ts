@@ -61,7 +61,7 @@ export interface IngestionRunsTable {
   error: string | null;
 }
 
-export type UserMark = 'applied' | 'not_interested';
+export type UserMark = 'applied' | 'saved' | 'dead';
 
 export interface UserJobMarksTable {
   job_opening_id: string;
@@ -155,6 +155,19 @@ export interface AppConfigTable {
   updated_at: string;
 }
 
+export type LayaVerdict = 'strong' | 'moderate' | 'weak';
+
+export interface LayaEvaluationTable {
+  job_opening_id: string;
+  candidate_id: string;
+  score: number;
+  choice: LayaVerdict;
+  reasoning: string;
+  mismatch_reasoning: string | null;
+  model_version: string | null;
+  evaluated_at: string;
+}
+
 export interface JobDb {
   job_openings: JobOpeningsTable;
   source_records: SourceRecordsTable;
@@ -169,4 +182,5 @@ export interface JobDb {
   skill_relations: SkillRelationTable;
   job_sent_cvs: JobSentCvTable;
   app_config: AppConfigTable;
+  laya_evaluations: LayaEvaluationTable;
 }

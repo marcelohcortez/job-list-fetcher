@@ -15,7 +15,12 @@ export interface VectorStore {
   ): Promise<void>;
   deleteCandidate(id: string): Promise<void>;
   getCandidateEmbedding(id: string): Promise<number[] | null>;
+  getJobEmbedding(id: string): Promise<number[] | null>;
   queryJobsForCandidate(
+    embedding: number[],
+    nResults?: number,
+  ): Promise<Array<{ id: string; similarity: number }>>;
+  queryCandidatesForJob(
     embedding: number[],
     nResults?: number,
   ): Promise<Array<{ id: string; similarity: number }>>;
@@ -122,8 +127,35 @@ export function createVectorStore(config: ChromaConfig): VectorStore {
       return embedding ?? null;
     },
 
+    async getJobEmbedding(id) {
+      const collection = await getJobCollection();
+      const result = await collection.get({
+        ids: [id],
+        include: ['embeddings'],
+      });
+      const embedding = result.embeddings?.[0];
+      return embedding ?? null;
+    },
+
     async queryJobsForCandidate(embedding, nResults) {
       const collection = await getJobCollection();
+      const limit = nResults ?? (await collection.count());
+      if (limit === 0) return [];
+      const result = await collection.query({
+        queryEmbeddings: [embedding],
+        nResults: limit,
+        include: ['distances'],
+      });
+      const ids = result.ids[0] ?? [];
+      const distances = result.distances?.[0] ?? [];
+      return ids.map((id, index) => ({
+        id,
+        similarity: toSimilarity(distances[index] ?? 1),
+      }));
+    },
+
+    async queryCandidatesForJob(embedding, nResults) {
+      const collection = await getCandidateCollection();
       const limit = nResults ?? (await collection.count());
       if (limit === 0) return [];
       const result = await collection.query({

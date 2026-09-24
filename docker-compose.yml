@@ -25,10 +25,18 @@ services:
       - OLLAMA_NUM_PREDICT=${OLLAMA_NUM_PREDICT:--1}
       - CHROMA_HOST=chroma
       - CHROMA_PORT=8000
+      # Laya (Docs/laya-integration-plan.md) runs as the `laya` service
+      # below, reached over the compose network by service name. Override
+      # LAYA_API_URL in .env to point elsewhere, or blank it to disable.
+      - LAYA_API_URL=${LAYA_API_URL:-http://laya:8000}
+      - LAYA_API_KEY=${LAYA_API_KEY:-}
+      - LAYA_TOP_K=${LAYA_TOP_K:-10}
+      - LAYA_WEIGHT=${LAYA_WEIGHT:-0.3}
     volumes:
       - app_data:/data
     depends_on:
       - chroma
+      - laya
 
   chroma:
     image: chromadb/chroma
@@ -37,6 +45,25 @@ services:
     volumes:
       - chroma_data:/data
 
+  laya:
+    build:
+      context: ./docker
+      dockerfile: laya.Dockerfile
+    ports:
+      - '8002:8000'
+    environment:
+      # LAYA_PRELOAD=1 fails on container start here: Docker's embedded DNS
+      # (127.0.0.11) isn't ready in the instant right after container start,
+      # and the eager model download races it and crashes the container.
+      # Leaving preload off means the first real evaluation request pays the
+      # one-time download cost instead (by then DNS is warm) - set to 1 only
+      # if this is fixed upstream or you add a startup delay.
+      - LAYA_PRELOAD=0
+      # - LAYA_API_KEY=${LAYA_API_KEY:-}   # uncomment to require bearer auth
+    volumes:
+      - laya_models:/root/.cache/huggingface
+
 volumes:
   app_data:
   chroma_data:
+  laya_models:

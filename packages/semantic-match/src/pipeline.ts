@@ -99,3 +99,14 @@ export async function matchJobsForCandidate(
   if (!embedding) return [];
   return pipeline.vectorStore.queryJobsForCandidate(embedding, topK);
 }
+
+/** Symmetric counterpart of `matchJobsForCandidate`, used to find a freshly-ingested job's shortlist of candidates for Laya evaluation (see Docs/laya-integration-plan.md). */
+export async function matchCandidatesForJob(
+  pipeline: SemanticPipeline,
+  jobOpeningId: string,
+  topK?: number,
+): Promise<Array<{ id: string; similarity: number }>> {
+  const embedding = await pipeline.vectorStore.getJobEmbedding(jobOpeningId);
+  if (!embedding) return [];
+  return pipeline.vectorStore.queryCandidatesForJob(embedding, topK);
+}

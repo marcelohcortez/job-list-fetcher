@@ -47,6 +47,7 @@ describe('migrations', () => {
       expect(names).toContain('skill_relations');
       expect(names).toContain('job_sent_cvs');
       expect(names).toContain('app_config');
+      expect(names).toContain('laya_evaluations');
       expect(names).not.toContain('cv_profile');
 
       const jobEmbeddingsTable = jobColumns.find((t) => t.name === 'job_embeddings');
@@ -61,6 +62,28 @@ describe('migrations', () => {
 
       const indexes = jobColumns.flatMap((t) => t.columns).length;
       expect(indexes).toBeGreaterThan(0);
+
+      await rollbackMigrations(db);
+      const afterDeadJobs = await db.introspection.getTables();
+      expect(afterDeadJobs.map((t) => t.name)).toContain('laya_evaluations');
+      expect(afterDeadJobs.map((t) => t.name)).toContain('user_job_marks');
+
+      // 017-laya-mismatch-reasoning's `down` is a no-op (same SQLite DROP
+      // COLUMN caveat as 009-role-categories), so this rollback removes only
+      // its migration record - laya_evaluations is still the next table to go.
+      await rollbackMigrations(db);
+      const afterMismatchReasoning = await db.introspection.getTables();
+      expect(afterMismatchReasoning.map((t) => t.name)).toContain('laya_evaluations');
+
+      await rollbackMigrations(db);
+      const afterSavedJobs = await db.introspection.getTables();
+      expect(afterSavedJobs.map((t) => t.name)).toContain('laya_evaluations');
+      expect(afterSavedJobs.map((t) => t.name)).toContain('user_job_marks');
+
+      await rollbackMigrations(db);
+      const afterLayaEvaluations = await db.introspection.getTables();
+      expect(afterLayaEvaluations.map((t) => t.name)).not.toContain('laya_evaluations');
+      expect(afterLayaEvaluations.map((t) => t.name)).toContain('app_config');
 
       await rollbackMigrations(db);
       const afterAppConfig = await db.introspection.getTables();

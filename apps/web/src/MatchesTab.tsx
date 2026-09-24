@@ -1,20 +1,33 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchAllMatches,
   setJobMark,
+  setJobSeen,
   type CandidateMatches,
   type JobMark,
   type JobOpening,
 } from './api';
 import { JobCard } from './components/JobCard';
 
-export function MatchesTab() {
+interface MatchesTabProps {
+  onMarkChange?: (jobId: string, mark: JobMark | null) => void;
+}
+
+function candidateLabel(entry: CandidateMatches): string {
+  return entry.candidateName ?? entry.fileName;
+}
+
+export function MatchesTab({ onMarkChange }: MatchesTabProps) {
   const [candidateMatches, setCandidateMatches] = useState<CandidateMatches[]>(
     [],
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingMarks, setPendingMarks] = useState<Record<string, boolean>>({});
+  const [pendingSeen, setPendingSeen] = useState<Record<string, boolean>>({});
+  const [search, setSearch] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchBoxRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,6 +65,7 @@ export function MatchesTab() {
     try {
       const saved = await setJobMark(job.id, next);
       applyMark(saved);
+      onMarkChange?.(job.id, saved);
     } catch (err) {
       setError((err as Error).message);
       applyMark(current);
@@ -62,6 +76,74 @@ export function MatchesTab() {
       });
     }
   };
+
+  const handleToggleSeen = async (job: JobOpening) => {
+    if (pendingSeen[job.id]) return;
+    const current = job.seenAt;
+    const next = !current;
+
+    const applySeen = (value: string | null) =>
+      setCandidateMatches((prev) =>
+        prev.map((entry) => ({
+          ...entry,
+          matches: entry.matches.map((m) =>
+            m.id === job.id ? { ...m, seenAt: value } : m,
+          ),
+        })),
+      );
+
+    setPendingSeen((prev) => ({ ...prev, [job.id]: true }));
+    applySeen(next ? new Date().toISOString() : null);
+    try {
+      const saved = await setJobSeen(job.id, next);
+      applySeen(saved);
+    } catch (err) {
+      setError((err as Error).message);
+      applySeen(current);
+    } finally {
+      setPendingSeen((prev) => {
+        const { [job.id]: _removed, ...rest } = prev;
+        return rest;
+      });
+    }
+  };
+
+  const sortedMatches = useMemo(
+    () =>
+      [...candidateMatches].sort((a, b) =>
+        candidateLabel(a).localeCompare(candidateLabel(b)),
+      ),
+    [candidateMatches],
+  );
+
+  const suggestions = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return [];
+    return sortedMatches
+      .filter((entry) => candidateLabel(entry).toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [search, sortedMatches]);
+
+  const visibleMatches = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return sortedMatches;
+    return sortedMatches.filter((entry) =>
+      candidateLabel(entry).toLowerCase().includes(q),
+    );
+  }, [search, sortedMatches]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        searchBoxRef.current &&
+        !searchBoxRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   if (loading) return <p className="muted">Loading matches...</p>;
 
@@ -79,10 +161,51 @@ export function MatchesTab() {
           CVs tab first.
         </p>
       ) : (
-        candidateMatches.map((entry) => (
+        <>
+          <div className="candidate-search" ref={searchBoxRef}>
+            <input
+              type="text"
+              className="candidate-search-input"
+              placeholder="Search candidates by name..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+            />
+            {showSuggestions && suggestions.length > 0 && (
+              <ul className="candidate-search-suggestions">
+                {suggestions.map((entry) => (
+                  <li key={entry.candidateId}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearch(candidateLabel(entry));
+                        setShowSuggestions(false);
+                      }}
+                    >
+                      {candidateLabel(entry)}
+                      {entry.candidateTitle ? ` - ${entry.candidateTitle}` : ''}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {visibleMatches.length === 0 ? (
+            <p className="muted">No candidates match "{search}".</p>
+          ) : (
+            visibleMatches.map((entry) => (
           <details key={entry.candidateId} className="candidate-matches">
             <summary>
-              <h2>{entry.candidateName ?? entry.fileName}</h2>
+              <h2>
+                {candidateLabel(entry)}
+                {entry.candidateTitle && (
+                  <span className="candidate-title"> - {entry.candidateTitle}</span>
+                )}
+              </h2>
               <span className="count">
                 {entry.matches.length} matching opening
                 {entry.matches.length === 1 ? '' : 's'}
@@ -97,19 +220,28 @@ export function MatchesTab() {
                     key={job.id}
                     job={job}
                     similarity={job.similarity}
+                    baseScore={job.baseScore}
                     skillCoverage={job.skillCoverage}
                     matchedSkillCount={job.matchedSkillCount}
                     requiredSkillCount={job.requiredSkillCount}
                     matchedSkills={job.matchedSkills}
                     missingSkills={job.missingSkills}
+                    layaScore={job.layaScore}
+                    layaChoice={job.layaChoice}
+                    layaReasoning={job.layaReasoning}
+                    layaMismatchReasoning={job.layaMismatchReasoning}
                     markDisabled={pendingMarks[job.id]}
                     onMark={handleMark}
+                    seenDisabled={pendingSeen[job.id]}
+                    onToggleSeen={handleToggleSeen}
                   />
                 ))}
               </ul>
             )}
           </details>
-        ))
+            ))
+          )}
+        </>
       )}
     </section>
   );

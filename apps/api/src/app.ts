@@ -3,7 +3,7 @@ import { cors } from 'hono/cors';
 import type { Kysely } from 'kysely';
 import type { SourceAdapter } from '@job-fetcher/source-adapters';
 import type { JobDb } from '@job-fetcher/database';
-import type { SemanticPipeline } from '@job-fetcher/semantic-match';
+import type { LayaClient, SemanticPipeline } from '@job-fetcher/semantic-match';
 import { jobsRoutes } from './routes/jobs';
 import { ingestionRoutes } from './routes/ingestion';
 import { candidatesRoutes } from './routes/candidates';
@@ -22,6 +22,7 @@ export function createApp(
   embedJob?: EmbedJob,
   isTitleInScope?: TitleScopeCheck,
   canonicalizeSkills: SkillCanonicalizer = noopCanonicalizeSkills,
+  laya?: { client: LayaClient; topK: number },
 ) {
   const app = new Hono();
 
@@ -35,7 +36,7 @@ export function createApp(
   });
   app.route('/api/jobs', jobsRoutes(db));
   app.route('/api/ingestion', ingestionRoutes(db, adapters, embedJob, isTitleInScope));
-  app.route('/api/candidates', candidatesRoutes(db, semantic, canonicalizeSkills));
+  app.route('/api/candidates', candidatesRoutes(db, semantic, canonicalizeSkills, laya));
   app.route('/api/matches', matchesRoutes(db, semantic, matchesConfig));
   app.route('/api/config', configRoutes(db, { vectorStore: semantic.vectorStore, embed: semantic.sanitizer.embed }));
 

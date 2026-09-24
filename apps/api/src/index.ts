@@ -15,7 +15,10 @@ import {
   createOllamaSanitizer,
   createOllamaCvRefactor,
   createVectorStore,
+  createLayaClient,
+  createOllamaReasoner,
   processJobOpening,
+  type LayaClient,
   type SemanticPipeline,
 } from '@job-fetcher/semantic-match';
 import { markJobSanitized, replaceJobRequiredSkills } from '@job-fetcher/database';
@@ -26,6 +29,7 @@ import { seedTargetRolePhrases, createTitleScopeChecker } from './role-scope';
 import { createSkillCanonicalizer } from './skill-taxonomy';
 import { seedSkillRelations } from './skill-relations-seed';
 import { loadConfigFromDb } from './config-registry';
+import { evaluateLayaForNewJob } from './laya-runner';
 
 function parseList(value: string | undefined): string[] | undefined {
   if (!value) return undefined;
@@ -68,6 +72,23 @@ function main() {
     }),
   };
 
+  // Laya (Docs/laya-integration-plan.md) is optional: only stood up when
+  // LAYA_API_URL is configured (e.g. `docker compose up laya`), so a
+  // deployment that hasn't set it up yet ingests exactly as before.
+  const layaClient: LayaClient | undefined = env.LAYA_API_URL
+    ? createLayaClient(
+        { apiUrl: env.LAYA_API_URL, apiKey: env.LAYA_API_KEY },
+        createOllamaReasoner({
+          host: env.OLLAMA_HOST,
+          chatModel: env.OLLAMA_CHAT_MODEL,
+          embedModel: env.OLLAMA_EMBED_MODEL,
+          numCtx: env.OLLAMA_NUM_CTX,
+          numPredict: env.OLLAMA_NUM_PREDICT,
+        }),
+      )
+    : undefined;
+  const laya = layaClient ? { client: layaClient, topK: env.LAYA_TOP_K } : undefined;
+
   void migrationsDone
     .then(() =>
       loadConfigFromDb(db, { vectorStore: semantic.vectorStore, embed: semantic.sanitizer.embed }),
@@ -107,6 +128,9 @@ function main() {
     });
     const skillIds = await canonicalizeSkills(sanitized.requiredSkills);
     await replaceJobRequiredSkills(db, jobOpeningId, skillIds);
+    if (laya) {
+      await evaluateLayaForNewJob(db, semantic, laya.client, jobOpeningId, anchorDocument, laya.topK);
+    }
   };
 
   const adapters: SourceAdapter[] = [
@@ -114,8 +138,8 @@ function main() {
       queries: parseQueries(env.JOBTECH_QUERIES),
       municipalityCode: env.JOBTECH_MUNICIPALITY_CODE,
     }),
-    new GreenhouseAdapter({ boards: parseList(env.GREENHOUSE_BOARDS) }),
-    new LeverAdapter({ boards: parseList(env.LEVER_BOARDS) }),
+    new GreenhouseAdapter(),
+    new LeverAdapter(),
     new TeamtailorAdapter(),
     new KeymanAdapter(),
   ];
@@ -140,10 +164,12 @@ function main() {
       noRequiredSkillsPenalty: env.NO_REQUIRED_SKILLS_PENALTY,
       seniorityMismatchPenalty: env.SENIORITY_MISMATCH_PENALTY,
       minSkillsForFullConfidence: env.MIN_SKILLS_FOR_FULL_CONFIDENCE,
+      layaWeight: env.LAYA_WEIGHT,
     },
     embedJob,
     isTitleInScope,
     canonicalizeSkills,
+    laya,
   );
 
   serve({ fetch: app.fetch, port: env.PORT }, (info) => {

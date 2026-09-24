@@ -31,6 +31,8 @@ describe('env schema', () => {
       NO_REQUIRED_SKILLS_PENALTY: 0.75,
       SENIORITY_MISMATCH_PENALTY: 0.7,
       MIN_SKILLS_FOR_FULL_CONFIDENCE: 3,
+      LAYA_TOP_K: 10,
+      LAYA_WEIGHT: 0.3,
       OLLAMA_NUM_CTX: 8192,
       OLLAMA_NUM_PREDICT: -1,
     });
@@ -61,14 +63,5 @@ describe('env schema', () => {
     expect(env.THEIRSTACK_API_KEY).toBeUndefined();
     expect(env.PORT).toBe(4000);
     expect(env.JOBTECH_MUNICIPALITY_CODE).toBe('1480');
-  });
-
-  it('parses board lists from comma-separated env vars', () => {
-    const env = loadEnv({
-      GREENHOUSE_BOARDS: 'wolt,truecaller',
-      LEVER_BOARDS: 'spotify,tomtom',
-    });
-    expect(env.GREENHOUSE_BOARDS).toBe('wolt,truecaller');
-    expect(env.LEVER_BOARDS).toBe('spotify,tomtom');
   });
 });

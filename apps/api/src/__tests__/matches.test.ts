@@ -8,6 +8,7 @@ import {
   markJobSanitized,
   replaceCandidateSkills,
   replaceJobRequiredSkills,
+  upsertLayaEvaluation,
 } from '@job-fetcher/database';
 import type { JobDb } from '@job-fetcher/database';
 import type { Kysely } from 'kysely';
@@ -93,6 +94,8 @@ describe('GET /matches', () => {
         upsertCandidate: vi.fn(),
         deleteCandidate: vi.fn(),
         getCandidateEmbedding: vi.fn().mockResolvedValue([0.1, 0.2]),
+        getJobEmbedding: vi.fn().mockResolvedValue(null),
+        queryCandidatesForJob: vi.fn().mockResolvedValue([]),
         queryJobsForCandidate: vi
           .fn()
           .mockResolvedValue([
@@ -161,6 +164,8 @@ describe('GET /matches', () => {
         upsertCandidate: vi.fn(),
         deleteCandidate: vi.fn(),
         getCandidateEmbedding: vi.fn().mockResolvedValue([0.1, 0.2]),
+        getJobEmbedding: vi.fn().mockResolvedValue(null),
+        queryCandidatesForJob: vi.fn().mockResolvedValue([]),
         queryJobsForCandidate: vi
           .fn()
           .mockResolvedValue([{ id: jobOpeningId, similarity: 0.8 }]),
@@ -243,6 +248,8 @@ describe('GET /matches', () => {
         upsertCandidate: vi.fn(),
         deleteCandidate: vi.fn(),
         getCandidateEmbedding: vi.fn().mockResolvedValue([0.1, 0.2]),
+        getJobEmbedding: vi.fn().mockResolvedValue(null),
+        queryCandidatesForJob: vi.fn().mockResolvedValue([]),
         queryJobsForCandidate: vi
           .fn()
           .mockResolvedValue([{ id: jobOpeningId, similarity: 0.8 }]),
@@ -297,6 +304,8 @@ describe('GET /matches', () => {
         upsertCandidate: vi.fn(),
         deleteCandidate: vi.fn(),
         getCandidateEmbedding: vi.fn().mockResolvedValue([0.1, 0.2]),
+        getJobEmbedding: vi.fn().mockResolvedValue(null),
+        queryCandidatesForJob: vi.fn().mockResolvedValue([]),
         // High raw similarity on shared generic vocabulary alone, and no
         // discrete required skills extracted for this job - exactly the
         // reported failure mode (ADR 0012).
@@ -343,6 +352,8 @@ describe('GET /matches', () => {
         upsertCandidate: vi.fn(),
         deleteCandidate: vi.fn(),
         getCandidateEmbedding: vi.fn().mockResolvedValue([0.1, 0.2]),
+        getJobEmbedding: vi.fn().mockResolvedValue(null),
+        queryCandidatesForJob: vi.fn().mockResolvedValue([]),
         queryJobsForCandidate: vi.fn().mockResolvedValue([{ id: jobOpeningId, similarity: 0.9 }]),
         upsertRolePhrase: vi.fn(),
         queryNearestRolePhrase: vi.fn(),
@@ -386,6 +397,8 @@ describe('GET /matches', () => {
         upsertCandidate: vi.fn(),
         deleteCandidate: vi.fn(),
         getCandidateEmbedding: vi.fn().mockResolvedValue([0.1, 0.2]),
+        getJobEmbedding: vi.fn().mockResolvedValue(null),
+        queryCandidatesForJob: vi.fn().mockResolvedValue([]),
         queryJobsForCandidate: vi.fn().mockResolvedValue([{ id: jobOpeningId, similarity: 0.5 }]),
         upsertRolePhrase: vi.fn(),
         queryNearestRolePhrase: vi.fn(),
@@ -409,6 +422,93 @@ describe('GET /matches', () => {
     expect(match.similarity).toBeCloseTo(0.6);
   });
 
+  it('blends in a persisted Laya evaluation as a third scoring term', async () => {
+    await runIngestion(db, [fakeAdapter([record()])]);
+    const jobs = await db.selectFrom('job_openings').select('id').execute();
+    const jobOpeningId = jobs[0].id;
+
+    const candidateId = await addSanitizedCandidate('Laya Larsson');
+
+    await upsertLayaEvaluation(db, {
+      jobOpeningId,
+      candidateId,
+      score: 0.9,
+      choice: 'strong',
+      reasoning: 'Strong overlap on core backend responsibilities.',
+      mismatchReasoning: 'No notable gaps identified.',
+    });
+
+    const semantic: SemanticPipeline = {
+      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), embed: vi.fn() },
+      vectorStore: {
+        upsertJob: vi.fn(),
+        deleteJob: vi.fn(),
+        upsertCandidate: vi.fn(),
+        deleteCandidate: vi.fn(),
+        getCandidateEmbedding: vi.fn().mockResolvedValue([0.1, 0.2]),
+        getJobEmbedding: vi.fn().mockResolvedValue(null),
+        queryCandidatesForJob: vi.fn().mockResolvedValue([]),
+        queryJobsForCandidate: vi.fn().mockResolvedValue([{ id: jobOpeningId, similarity: 0.6 }]),
+        upsertRolePhrase: vi.fn(),
+        queryNearestRolePhrase: vi.fn(),
+        upsertSkill: vi.fn(),
+        queryNearestSkill: vi.fn(),
+      },
+      cvRefactor: { refactorCv: vi.fn() },
+    };
+
+    // No required skills extracted for this job -> falls back to the
+    // semantic/laya blend: (semanticSimilarity * (1 - layaWeight) +
+    // layaWeight * layaScore) * noRequiredSkillsPenalty
+    // = (0.6 * 0.7 + 0.3 * 0.9) * 0.75 = (0.42 + 0.27) * 0.75 = 0.5175
+    const app = createApp(db, [], semantic, { topK: 10, minSimilarity: 0, layaWeight: 0.3 });
+    const body = await (await app.request('/api/matches')).json();
+    const match = body.data[0].matches[0];
+
+    expect(match.layaScore).toBe(0.9);
+    expect(match.layaChoice).toBe('strong');
+    expect(match.layaReasoning).toBe('Strong overlap on core backend responsibilities.');
+    expect(match.layaMismatchReasoning).toBe('No notable gaps identified.');
+    expect(match.similarity).toBeCloseTo(0.5175);
+  });
+
+  it('falls back to the two-term blend when a pair has no persisted Laya evaluation', async () => {
+    await runIngestion(db, [fakeAdapter([record()])]);
+    const jobs = await db.selectFrom('job_openings').select('id').execute();
+    const jobOpeningId = jobs[0].id;
+
+    await addSanitizedCandidate('No Laya Yet');
+
+    const semantic: SemanticPipeline = {
+      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), embed: vi.fn() },
+      vectorStore: {
+        upsertJob: vi.fn(),
+        deleteJob: vi.fn(),
+        upsertCandidate: vi.fn(),
+        deleteCandidate: vi.fn(),
+        getCandidateEmbedding: vi.fn().mockResolvedValue([0.1, 0.2]),
+        getJobEmbedding: vi.fn().mockResolvedValue(null),
+        queryCandidatesForJob: vi.fn().mockResolvedValue([]),
+        queryJobsForCandidate: vi.fn().mockResolvedValue([{ id: jobOpeningId, similarity: 0.6 }]),
+        upsertRolePhrase: vi.fn(),
+        queryNearestRolePhrase: vi.fn(),
+        upsertSkill: vi.fn(),
+        queryNearestSkill: vi.fn(),
+      },
+      cvRefactor: { refactorCv: vi.fn() },
+    };
+
+    const app = createApp(db, [], semantic, { topK: 10, minSimilarity: 0, layaWeight: 0.3 });
+    const body = await (await app.request('/api/matches')).json();
+    const match = body.data[0].matches[0];
+
+    expect(match.layaScore).toBeNull();
+    expect(match.layaChoice).toBeNull();
+    // No evaluation yet -> layaWeight's budget isn't spent at all, so this
+    // is just semanticSimilarity * noRequiredSkillsPenalty = 0.6 * 0.75 = 0.45
+    expect(match.similarity).toBeCloseTo(0.45);
+  });
+
   it('excludes candidates that have not finished sanitizing', async () => {
     await insertCandidate(db, {
       fileName: 'pending.pdf',
@@ -430,6 +530,8 @@ describe('GET /matches', () => {
         upsertCandidate: vi.fn(),
         deleteCandidate: vi.fn(),
         getCandidateEmbedding: vi.fn(),
+        getJobEmbedding: vi.fn().mockResolvedValue(null),
+        queryCandidatesForJob: vi.fn().mockResolvedValue([]),
         queryJobsForCandidate: vi.fn(),
         upsertRolePhrase: vi.fn(),
         queryNearestRolePhrase: vi.fn(),
