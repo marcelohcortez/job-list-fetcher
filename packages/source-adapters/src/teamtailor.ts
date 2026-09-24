@@ -26,14 +26,29 @@ export const DEFAULT_TEAMTAILOR_BOARDS: readonly TeamtailorBoard[] = [
 ];
 
 /**
+ * Runtime-editable board list, read fresh by `fetchJobs()` on every
+ * ingestion run so a Configuration-screen edit applies without a restart. An
+ * adapter constructed with an explicit `boards` option (tests) bypasses this
+ * and keeps its own fixed list.
+ */
+let teamtailorBoards: TeamtailorBoard[] = [...DEFAULT_TEAMTAILOR_BOARDS];
+
+export function getTeamtailorBoards(): readonly TeamtailorBoard[] {
+  return teamtailorBoards;
+}
+
+export function setTeamtailorBoards(boards: readonly TeamtailorBoard[]): void {
+  teamtailorBoards = boards.map((board) => ({ ...board }));
+}
+
+/**
  * Teamtailor career sites all expose the same public, unauthenticated
  * `/jobs.json` JSON Feed (with an embedded schema.org `_jobposting` per
  * item), so one adapter covers every board rather than one class per site.
  */
 export class TeamtailorAdapter {
   readonly name = 'teamtailor';
-  readonly sourceNames: string[];
-  private readonly boards: TeamtailorBoard[];
+  private readonly explicitBoards?: TeamtailorBoard[];
   private readonly rateLimitMs: number;
   private readonly fetcher: (
     url: string,
@@ -41,15 +56,19 @@ export class TeamtailorAdapter {
   ) => Promise<Response>;
 
   constructor(options: TeamtailorAdapterOptions = {}) {
-    this.boards = options.boards ?? [...DEFAULT_TEAMTAILOR_BOARDS];
-    this.sourceNames = this.boards.map((board) => board.name);
+    this.explicitBoards = options.boards ? [...options.boards] : undefined;
     this.rateLimitMs = options.rateLimitMs ?? 150;
     this.fetcher = options.fetcher ?? ((url, init) => fetch(url, init));
   }
 
+  get sourceNames(): string[] {
+    return (this.explicitBoards ?? getTeamtailorBoards()).map((board) => board.name);
+  }
+
   async fetchJobs(): Promise<SourceRecord[]> {
+    const boards = this.explicitBoards ?? getTeamtailorBoards();
     const records: SourceRecord[] = [];
-    for (const board of this.boards) {
+    for (const board of boards) {
       records.push(...(await this.fetchBoard(board)));
     }
     return records;

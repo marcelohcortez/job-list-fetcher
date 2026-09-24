@@ -25,6 +25,17 @@ import {
 import { deleteAppConfig, listAppConfig, setAppConfig, type JobDb } from '@job-fetcher/database';
 import type { VectorStore } from '@job-fetcher/semantic-match';
 import {
+  DEFAULT_GREENHOUSE_BOARDS,
+  getGreenhouseBoards,
+  setGreenhouseBoards,
+  DEFAULT_LEVER_BOARDS,
+  getLeverBoards,
+  setLeverBoards,
+  DEFAULT_TEAMTAILOR_BOARDS,
+  getTeamtailorBoards,
+  setTeamtailorBoards,
+} from '@job-fetcher/source-adapters';
+import {
   DEFAULT_OS_SKILL_EXCLUSIONS,
   getOsSkillExclusions,
   setOsSkillExclusions,
@@ -170,6 +181,40 @@ const REGISTRY: readonly ConfigFieldDef[] = [
       const seeds = value as SkillRelationSeed[];
       setSkillRelationSeeds(seeds);
       if (ctx) await applySkillRelationSeeds(db, ctx.vectorStore, ctx.embed, seeds);
+    },
+  },
+  {
+    key: 'greenhouse_boards',
+    label: 'Greenhouse boards',
+    description:
+      'Company board slugs to pull from Greenhouse\'s public, unauthenticated jobs feed (boards-api.greenhouse.io) - no API key needed. Find a company\'s slug in its careers URL, e.g. boards.greenhouse.io/<slug>.',
+    type: 'string_list',
+    defaultValue: () => DEFAULT_GREENHOUSE_BOARDS.map((b) => b.slug),
+    get: () => getGreenhouseBoards().map((b) => b.slug),
+    set: (value) => setGreenhouseBoards(value as string[]),
+  },
+  {
+    key: 'lever_boards',
+    label: 'Lever boards',
+    description:
+      'Company board slugs to pull from Lever\'s public, unauthenticated postings feed (api.lever.co) - no API key needed. Find a company\'s slug in its careers URL, e.g. jobs.lever.co/<slug>.',
+    type: 'string_list',
+    defaultValue: () => DEFAULT_LEVER_BOARDS.map((b) => b.slug),
+    get: () => getLeverBoards().map((b) => b.slug),
+    set: (value) => setLeverBoards(value as string[]),
+  },
+  {
+    key: 'teamtailor_boards',
+    label: 'Teamtailor boards',
+    description:
+      'Career-site hostname -> display name for companies to pull from Teamtailor\'s public, unauthenticated jobs.json feed - no API key needed. The hostname is whatever domain the company\'s career page runs on (its own domain or a *.teamtailor.com subdomain).',
+    type: 'kv_map',
+    defaultValue: () =>
+      Object.fromEntries(DEFAULT_TEAMTAILOR_BOARDS.map((b) => [b.host, b.name])),
+    get: () => Object.fromEntries(getTeamtailorBoards().map((b) => [b.host, b.name])),
+    set: (value) => {
+      const map = value as Record<string, string>;
+      setTeamtailorBoards(Object.entries(map).map(([host, name]) => ({ host, name })));
     },
   },
 ];

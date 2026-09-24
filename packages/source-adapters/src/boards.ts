@@ -102,3 +102,28 @@ export const DEFAULT_LEVER_BOARDS: readonly BoardConfig[] = [
   { slug: 'tomtom', name: 'TomTom', host: 'eu' },
   { slug: 'lever', name: 'Lever', host: 'eu' },
 ];
+
+/**
+ * Runtime-editable board lists, read fresh by an adapter's `fetchJobs()` on
+ * every ingestion run so a Configuration-screen edit applies without a
+ * restart. An adapter constructed with an explicit `boards` option (tests,
+ * or a fixed env override) bypasses this and keeps its own fixed list.
+ */
+let greenhouseBoards: BoardConfig[] = [...DEFAULT_GREENHOUSE_BOARDS];
+let leverBoards: BoardConfig[] = [...DEFAULT_LEVER_BOARDS];
+
+export function getGreenhouseBoards(): readonly BoardConfig[] {
+  return greenhouseBoards;
+}
+
+export function setGreenhouseBoards(boards: (string | BoardConfig)[]): void {
+  greenhouseBoards = toBoardConfigs(boards, DEFAULT_GREENHOUSE_BOARDS);
+}
+
+export function getLeverBoards(): readonly BoardConfig[] {
+  return leverBoards;
+}
+
+export function setLeverBoards(boards: (string | BoardConfig)[]): void {
+  leverBoards = toBoardConfigs(boards, DEFAULT_LEVER_BOARDS);
+}

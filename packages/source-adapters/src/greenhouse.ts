@@ -9,6 +9,7 @@ import {
 } from './base';
 import {
   DEFAULT_GREENHOUSE_BOARDS,
+  getGreenhouseBoards,
   stripHtml,
   toBoardConfigs,
   type BoardConfig,
@@ -26,7 +27,7 @@ const VAGUE_LOCATION = /^(remote|hybrid|on-?site|in-?office|anywhere|global)$/i;
 export class GreenhouseAdapter {
   readonly name = 'greenhouse';
   private readonly baseUrl: string;
-  private readonly boards: BoardConfig[];
+  private readonly explicitBoards?: BoardConfig[];
   private readonly rateLimitMs: number;
   private readonly fetcher: (
     url: string,
@@ -35,14 +36,17 @@ export class GreenhouseAdapter {
 
   constructor(options: GreenhouseAdapterOptions = {}) {
     this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
-    this.boards = toBoardConfigs(options.boards, DEFAULT_GREENHOUSE_BOARDS);
+    this.explicitBoards = options.boards
+      ? toBoardConfigs(options.boards, DEFAULT_GREENHOUSE_BOARDS)
+      : undefined;
     this.rateLimitMs = options.rateLimitMs ?? 100;
     this.fetcher = options.fetcher ?? ((url, init) => fetch(url, init));
   }
 
   async fetchJobs(): Promise<SourceRecord[]> {
+    const boards = this.explicitBoards ?? getGreenhouseBoards();
     const records: SourceRecord[] = [];
-    for (const board of this.boards) {
+    for (const board of boards) {
       records.push(...(await this.fetchBoard(board)));
     }
     return records;

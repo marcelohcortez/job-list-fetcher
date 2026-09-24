@@ -9,6 +9,7 @@ import {
 } from './base';
 import {
   DEFAULT_LEVER_BOARDS,
+  getLeverBoards,
   stripHtml,
   toBoardConfigs,
   type BoardConfig,
@@ -27,7 +28,7 @@ export class LeverAdapter {
   readonly name = 'lever';
   private readonly baseUrl: string;
   private readonly euBaseUrl: string;
-  private readonly boards: BoardConfig[];
+  private readonly explicitBoards?: BoardConfig[];
   private readonly rateLimitMs: number;
   private readonly fetcher: (
     url: string,
@@ -37,14 +38,17 @@ export class LeverAdapter {
   constructor(options: LeverAdapterOptions = {}) {
     this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
     this.euBaseUrl = options.euBaseUrl ?? DEFAULT_EU_BASE_URL;
-    this.boards = toBoardConfigs(options.boards, DEFAULT_LEVER_BOARDS);
+    this.explicitBoards = options.boards
+      ? toBoardConfigs(options.boards, DEFAULT_LEVER_BOARDS)
+      : undefined;
     this.rateLimitMs = options.rateLimitMs ?? 150;
     this.fetcher = options.fetcher ?? ((url, init) => fetch(url, init));
   }
 
   async fetchJobs(): Promise<SourceRecord[]> {
+    const boards = this.explicitBoards ?? getLeverBoards();
     const records: SourceRecord[] = [];
-    for (const board of this.boards) {
+    for (const board of boards) {
       records.push(...(await this.fetchBoard(board)));
     }
     return records;

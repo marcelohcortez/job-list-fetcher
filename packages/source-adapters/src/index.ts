@@ -13,9 +13,21 @@ export { GreenhouseAdapter } from './greenhouse';
 export type { GreenhouseAdapterOptions } from './greenhouse';
 export { LeverAdapter } from './lever';
 export type { LeverAdapterOptions } from './lever';
-export { DEFAULT_GREENHOUSE_BOARDS, DEFAULT_LEVER_BOARDS } from './boards';
+export {
+  DEFAULT_GREENHOUSE_BOARDS,
+  DEFAULT_LEVER_BOARDS,
+  getGreenhouseBoards,
+  setGreenhouseBoards,
+  getLeverBoards,
+  setLeverBoards,
+} from './boards';
 export type { BoardConfig } from './boards';
-export { TeamtailorAdapter, DEFAULT_TEAMTAILOR_BOARDS } from './teamtailor';
+export {
+  TeamtailorAdapter,
+  DEFAULT_TEAMTAILOR_BOARDS,
+  getTeamtailorBoards,
+  setTeamtailorBoards,
+} from './teamtailor';
 export type { TeamtailorAdapterOptions, TeamtailorBoard } from './teamtailor';
 export { KeymanAdapter } from './keyman';
 export type { KeymanAdapterOptions } from './keyman';
