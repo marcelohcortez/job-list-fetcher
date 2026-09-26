@@ -15,6 +15,7 @@ interface JobCardProps {
   layaChoice?: LayaVerdict | null;
   layaReasoning?: string | null;
   layaMismatchReasoning?: string | null;
+  layaTruncated?: boolean;
   markDisabled?: boolean;
   onMark?: (job: JobOpening, mark: JobMark) => void;
   seenDisabled?: boolean;
@@ -162,6 +163,7 @@ export function JobCard({
   layaChoice,
   layaReasoning,
   layaMismatchReasoning,
+  layaTruncated,
   markDisabled,
   onMark,
   seenDisabled,
@@ -226,6 +228,15 @@ export function JobCard({
         <p className="match laya-match">
           <span className="match-score">{Math.round(layaScore * 100)}% Laya match</span>
           <span className={`laya-choice laya-choice-${layaChoice}`}> {layaChoice}</span>
+          {layaTruncated && (
+            <span
+              className="laya-truncated-badge"
+              title="Laya's token budget cut off part of the combined job/CV text for this evaluation - its score and reasoning may be based on incomplete input."
+            >
+              {' '}
+              ⚠ partial text read
+            </span>
+          )}
         </p>
       )}
       {(baseScore ?? similarity) != null && layaScore != null && (

@@ -241,6 +241,7 @@ export function MatchesTab({ onMarkChange }: MatchesTabProps) {
                     layaChoice={job.layaChoice}
                     layaReasoning={job.layaReasoning}
                     layaMismatchReasoning={job.layaMismatchReasoning}
+                    layaTruncated={job.layaTruncated}
                     markDisabled={pendingMarks[job.id]}
                     onMark={handleMark}
                     seenDisabled={pendingSeen[job.id]}

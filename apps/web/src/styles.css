@@ -702,6 +702,19 @@ main {
   color: var(--danger, #a32323);
 }
 
+/* Only rendered when the persisted Laya evaluation was flagged as
+   truncated (matches.ts's layaTruncated) - Laya's small token budget for
+   the combined job+CV text (see laya.ts's TRUNCATION_TOKEN_THRESHOLD
+   comment) silently dropped part of it for this specific match, so its
+   score/reasoning may be based on incomplete input. */
+.laya-truncated-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
 /* Deliberately plain - no icon, no colored box - so the one new piece of
    free text on a job card (Laya's reasoning) doesn't add to card clutter,
    see Docs/laya-integration-plan.md "UI (Decision 6)". */

@@ -38,6 +38,7 @@ describe('createLayaClient', () => {
       choice: 'strong',
       reasoning: 'Great backend overlap.',
       mismatchReasoning: 'No cloud experience listed.',
+      truncated: false,
     });
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:8001/v1/systemone',
@@ -49,6 +50,46 @@ describe('createLayaClient', () => {
       verdict: 'strong',
       score: 1,
     });
+  });
+
+  it('flags truncated when reported input_tokens is near the two-question ceiling', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          answers: {
+            verdict: { choice: 'moderate', confidence: 0.8 },
+            fit: { score: 1, confidence: 0.7 },
+          },
+          usage: { input_tokens: 2010, output_tokens: 0 }, // 2 * 1024 - 40 threshold is 2008
+        }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const client = createLayaClient({ apiUrl: 'http://localhost:8001' }, fakeReasoner());
+    const result = await client.evaluate({ jobText: 'a very long job', cvText: 'a very long cv' });
+
+    expect(result.truncated).toBe(true);
+  });
+
+  it('does not flag truncated when reported input_tokens is well under the ceiling', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          answers: {
+            verdict: { choice: 'moderate', confidence: 0.8 },
+            fit: { score: 1, confidence: 0.7 },
+          },
+          usage: { input_tokens: 433, output_tokens: 0 },
+        }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const client = createLayaClient({ apiUrl: 'http://localhost:8001' }, fakeReasoner());
+    const result = await client.evaluate({ jobText: 'short job', cvText: 'short cv' });
+
+    expect(result.truncated).toBe(false);
   });
 
   it('sends a bearer token when an API key is configured', async () => {

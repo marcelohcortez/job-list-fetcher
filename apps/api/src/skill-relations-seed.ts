@@ -142,6 +142,59 @@ export const DEFAULT_SKILL_RELATION_SEEDS: readonly SkillRelationSeed[] = [
   { a: '.NET', b: '.NET Core', type: 'equivalent', weight: 1.0 },
   { a: 'Net', b: '.NET Core', type: 'equivalent', weight: 1.0 },
   { a: 'Advanced SQL', b: 'SQL', type: 'equivalent', weight: 1.0 },
+
+  // .NET version/qualifier variants - a version-suffixed or qualified
+  // mention ("(6-8)", "framework", combined with C#, translated Swedish
+  // phrasing) is still literally the same technology, not a different
+  // skill, so these are full equivalents rather than partial credit -
+  // same reasoning as the React/Node/Vue spelling-variant cluster above.
+  { a: '.NET', b: '.NET (6-8)', type: 'equivalent', weight: 1.0 },
+  { a: '.NET', b: '.NET framework', type: 'equivalent', weight: 1.0 },
+  { a: '.NET', b: '.NET/C#', type: 'equivalent', weight: 1.0 },
+  { a: '.NET', b: 'C#.NET Core', type: 'equivalent', weight: 1.0 },
+  { a: '.NET', b: 'Djup kompetens inom .NET', type: 'equivalent', weight: 1.0 },
+
+  // DevOps cluster - any concrete DevOps tool/practice a candidate names is
+  // treated as satisfying a job's generic "DevOps" requirement. Kept as
+  // 'related' (not 'equivalent') since naming one tool (e.g. Azure DevOps)
+  // doesn't prove the full discipline the way a spelling variant would -
+  // same tier as the existing DevSecOps/SRE rows above.
+  { a: 'DevOps', b: 'DevOps/CI-CD', type: 'related', weight: 0.8 },
+  { a: 'DevOps', b: 'devops automation', type: 'related', weight: 0.8 },
+  { a: 'DevOps', b: 'Azure DevOps', type: 'related', weight: 0.7 },
+  { a: 'Azure DevOps', b: 'Microsoft Azure DevOps', type: 'equivalent', weight: 1.0 },
+  { a: 'DevOps', b: 'Microsoft Azure DevOps', type: 'related', weight: 0.7 },
+
+  // Cloud provider cluster - same spelling-variant reasoning for the three
+  // GCP names (full equivalence), but Azure/AWS/GCP themselves are genuinely
+  // different platforms, so cross-provider credit is 'related' at a lower
+  // weight: hands-on cloud-platform experience transfers, but the specific
+  // APIs/tooling don't carry over 1:1 the way a renamed skill does.
+  { a: 'GCP', b: 'Google Cloud', type: 'equivalent', weight: 1.0 },
+  { a: 'GCP', b: 'Google Cloud Platform', type: 'equivalent', weight: 1.0 },
+  { a: 'Google Cloud', b: 'Google Cloud Platform', type: 'equivalent', weight: 1.0 },
+  { a: 'Azure', b: 'AWS', type: 'related', weight: 0.6 },
+  { a: 'Azure', b: 'Amazon Web Services', type: 'related', weight: 0.6 },
+  { a: 'Azure', b: 'GCP', type: 'related', weight: 0.6 },
+  { a: 'Azure', b: 'Google Cloud', type: 'related', weight: 0.6 },
+  { a: 'Azure', b: 'Google Cloud Platform', type: 'related', weight: 0.6 },
+
+  // Frontend/CMS/e-commerce cluster - gaps found auditing a real match
+  // (Marcelo Cortez, Senior Frontend/Full-Stack Developer, 2026-09-26):
+  // these named tools/frameworks were extracted as distinct unmatched
+  // skills against job postings asking for the closely related generic
+  // capability, undercounting genuine coverage.
+  { a: 'Next.js', b: 'React', type: 'related', weight: 0.7 },
+  { a: 'TypeScript', b: 'JavaScript', type: 'related', weight: 0.7 },
+  { a: 'WooCommerce', b: 'WordPress', type: 'related', weight: 0.8 },
+  { a: 'GraphQL', b: 'REST APIs', type: 'related', weight: 0.5 },
+  { a: 'MongoDB', b: 'NoSQL', type: 'related', weight: 0.7 },
+  { a: 'Azure Blob Storage', b: 'Microsoft Azure', type: 'related', weight: 0.7 },
+  { a: 'Azure Static Web Apps', b: 'Microsoft Azure', type: 'related', weight: 0.7 },
+  { a: 'Azure Web Apps', b: 'Microsoft Azure', type: 'related', weight: 0.7 },
+  { a: 'Strapi', b: 'Headless CMS', type: 'related', weight: 0.7 },
+  { a: 'Magento', b: 'E-commerce Platform', type: 'related', weight: 0.6 },
+  { a: 'WooCommerce', b: 'E-commerce Platform', type: 'related', weight: 0.6 },
 ];
 
 let skillRelationSeeds: SkillRelationSeed[] = [...DEFAULT_SKILL_RELATION_SEEDS];

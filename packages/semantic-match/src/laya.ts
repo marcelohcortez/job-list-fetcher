@@ -11,6 +11,15 @@ export interface LayaEvaluation {
   reasoning: string;
   /** Negative-only explanation of the candidate's gaps against the job - never mixed into `reasoning`. */
   mismatchReasoning: string;
+  /**
+   * True when Laya's token budget likely cut off part of the combined
+   * job+CV text for this evaluation - see the truncation-detection comment
+   * on TRUNCATION_TOKEN_THRESHOLD below. A conservative signal, not a
+   * precise one: it can under-report (state truncated on only one of the
+   * two questions, or truncated by less than would hit the threshold) but
+   * should not over-report on genuinely untruncated pairs.
+   */
+  truncated: boolean;
 }
 
 export interface LayaClient {
@@ -78,17 +87,37 @@ interface LayaSystemOneResponse {
     verdict?: { choice: LayaVerdict; confidence: number };
     fit?: { score: number; confidence: number };
   };
+  usage?: { input_tokens: number; output_tokens: number };
 }
 
 function isLayaVerdict(value: unknown): value is LayaVerdict {
   return value === 'strong' || value === 'moderate' || value === 'weak';
 }
 
+/**
+ * `state` (the combined job+CV JSON) is built independently for each of the
+ * two questions in LAYA_QUESTIONS (verdict, fit) - see laya's
+ * build_sequence/system_one - each capped at the `multilingual` checkpoint's
+ * 1024-token max_len. `usage.input_tokens` in the response is the SUMMED
+ * token count across both questions' sequences together, not reported per
+ * question, so there's no way to tell from the response alone which
+ * question (if either) actually hit its cap. Since both questions share the
+ * exact same `state`, though, a state that's too long to fit truncates on
+ * both fairly equally - so a sum close to the two-question ceiling
+ * (2 x 1024) is strong evidence that at least one, likely both, got capped.
+ * This margin (40 tokens under the absolute max) exists only to allow for
+ * the few special/marker tokens each sequence adds on top of `state` -
+ * see laya's build_sequence for exactly which those are.
+ */
+const LAYA_MULTILINGUAL_MAX_LEN = 1024;
+const LAYA_QUESTION_COUNT = 2; // verdict + fit, see LAYA_QUESTIONS below.
+const TRUNCATION_TOKEN_THRESHOLD = LAYA_QUESTION_COUNT * LAYA_MULTILINGUAL_MAX_LEN - 40;
+
 async function callSystemOne(
   config: LayaConfig,
   jobText: string,
   cvText: string,
-): Promise<{ verdict: LayaVerdict; rawScore: number }> {
+): Promise<{ verdict: LayaVerdict; rawScore: number; truncated: boolean }> {
   const response = await fetch(`${config.apiUrl.replace(/\/$/, '')}/v1/systemone`, {
     method: 'POST',
     headers: {
@@ -98,6 +127,24 @@ async function callSystemOne(
     body: JSON.stringify({
       state: { job: jobText, cv: cvText },
       questions: LAYA_QUESTIONS,
+      // Laya auto-routes to its 512-token English checkpoint whenever
+      // combined `state` reads as English Latin text - which our anchor
+      // documents always do (the sanitizer normalizes both job and CV text
+      // to English, see ENGLISH_NORMALIZATION_NOTE). But that checkpoint
+      // only reserves ~317 of those 512 tokens for `state` itself (the rest
+      // is instructions/option tokens reused per question, see laya's
+      // build_sequence/head_max_len) - measured directly against a real
+      // job+CV anchor pair here, that limit silently truncated ~26% of the
+      // combined text off the end (truncation isn't left-padded), quietly
+      // dropping the end of a candidate's CORE RESPONSIBILITIES on every
+      // evaluation past that length, with no error or signal it happened.
+      // Forcing the `multilingual` checkpoint (1024 tokens, ~829 usable)
+      // trades a modest English-accuracy dip (0.619 vs 0.684 on Laya's own
+      // English-suite benchmark) for not silently losing over a quarter of
+      // the input on a routine evaluation - not `typed-decisions` (also
+      // 1024 tokens), which Laya's own docs say is fine-tuned on four
+      // unrelated synthetic workflows and "should not be a silent default".
+      model: 'multilingual',
     }),
   });
   if (!response.ok) {
@@ -109,7 +156,8 @@ async function callSystemOne(
   if (!isLayaVerdict(verdict) || typeof rawScore !== 'number') {
     throw new Error('Laya response missing expected "verdict"/"fit" answers');
   }
-  return { verdict, rawScore };
+  const truncated = (body.usage?.input_tokens ?? 0) >= TRUNCATION_TOKEN_THRESHOLD;
+  return { verdict, rawScore, truncated };
 }
 
 export function createLayaClient(
@@ -118,7 +166,7 @@ export function createLayaClient(
 ): LayaClient {
   return {
     async evaluate({ jobText, cvText }) {
-      const { verdict, rawScore } = await callSystemOne(config, jobText, cvText);
+      const { verdict, rawScore, truncated } = await callSystemOne(config, jobText, cvText);
       const score = Math.max(
         0,
         Math.min(1, rawScore / (FIT_RUBRIC.length - 1)),
@@ -129,7 +177,7 @@ export function createLayaClient(
         verdict,
         score,
       });
-      return { score, choice: verdict, reasoning, mismatchReasoning };
+      return { score, choice: verdict, reasoning, mismatchReasoning, truncated };
     },
   };
 }

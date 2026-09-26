@@ -26,6 +26,7 @@ function fakeSanitizer(): SanitizerClient {
       experienceProfile: '5 years',
       coreResponsibilities: ['built APIs'],
     }),
+    extractSkills: vi.fn().mockResolvedValue([]),
     embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
   };
 }

@@ -47,6 +47,13 @@ export interface OllamaConfig {
 export interface SanitizerClient {
   sanitizeJob(rawText: string): Promise<SanitizedJob>;
   sanitizeCandidate(rawText: string): Promise<SanitizedCandidate>;
+  /**
+   * Second, dedicated pass over the same source text that extracts ONLY
+   * requiredSkills - see the `extractSkills` doc comment on
+   * `createOllamaSanitizer` below for why this exists alongside
+   * sanitizeJob/sanitizeCandidate rather than replacing them.
+   */
+  extractSkills(rawText: string): Promise<string[]>;
   embed(text: string): Promise<number[]>;
 }
 
@@ -127,12 +134,59 @@ const JOB_SYSTEM_PROMPT =
   'benefits like snacks or equity, and generic text. ' +
   SKILL_SPLIT_INSTRUCTION;
 
+const SKILLS_ONLY_JSON_SCHEMA = {
+  type: 'object',
+  properties: {
+    skills: {
+      type: 'array',
+      items: { type: 'string' },
+      description: PROFILE_FIELD_DESCRIPTIONS.requiredSkills,
+    },
+  },
+  required: ['skills'],
+};
+
+/**
+ * A single call to sanitizeJob/sanitizeCandidate asks the model to produce
+ * five different fields at once (title, requiredSkills, softSkills,
+ * experienceProfile, coreResponsibilities) from a whole multi-section
+ * document. Empirically (2026-09-25 matching-quality investigation, see
+ * Docs/matching_pipeline.md) that's too much for a 7B local model to do
+ * exhaustively: a real CV with a standalone "Skills" section plus three past
+ * job entries' own tech lists reliably lost several skills every run -
+ * inconsistent runs dropped different ones (a 14B model dropped a
+ * *different* subset, including "C#"), so it isn't fixed by picking a
+ * specific bigger model either. This is a narrower, single-purpose second
+ * pass whose entire output is a skills list - nothing else for the model to
+ * juggle - run over the SAME source text and unioned with
+ * sanitizeJob/sanitizeCandidate's own requiredSkills (see pipeline.ts). Pure
+ * recall booster: a duplicate the first pass already found costs nothing
+ * (deduped on merge), so this only ever adds coverage, never removes it.
+ */
+const SKILLS_EXTRACTION_SYSTEM_PROMPT =
+  'You extract EVERY named technical skill, tool, language, framework, ' +
+  'platform, or technical methodology mentioned ANYWHERE in the following ' +
+  'document - this is your only job, so be exhaustive rather than concise. ' +
+  'Scan the entire document section by section: any standalone "Skills"/' +
+  '"Competencies"/"Technologies" list, every past role or job entry and its ' +
+  "own tools/technologies list, certificates, and the document's summary " +
+  'text all count equally - do not stop after the first or most prominent ' +
+  'section, and do not limit yourself to a single role or job entry. ' +
+  'Repeating the same skill because it appears in multiple sections is ' +
+  'fine; duplicates are removed later. ' +
+  SKILL_SPLIT_INSTRUCTION;
+
 const CANDIDATE_SYSTEM_PROMPT =
   'You are an elite automated CV parser. Extract the candidate\'s name and ' +
-  "their skills/experience into the requested JSON schema, framed as the " +
-  "candidate's own most recent or target job title, skills and " +
-  'responsibilities. Ignore formatting artifacts and personal contact ' +
-  'details other than the name. ' +
+  "their skills/experience into the requested JSON schema. `title` is the " +
+  "candidate's own most recent or target job title - but requiredSkills, " +
+  'softSkills, and coreResponsibilities must be extracted from the ENTIRE ' +
+  'CV, not just the most recent role: include every technology, tool, or ' +
+  'skill named anywhere in the document - a standalone "Skills"/' +
+  '"Competencies"/"Technologies" section, certificates, and every past job ' +
+  "entry's own tools/technologies list all count equally, not only the " +
+  "candidate's current or most recent position. Ignore formatting " +
+  'artifacts and personal contact details other than the name. ' +
   SKILL_SPLIT_INSTRUCTION;
 
 export function createOllamaSanitizer(config: OllamaConfig): SanitizerClient {
@@ -142,6 +196,7 @@ export function createOllamaSanitizer(config: OllamaConfig): SanitizerClient {
     system: string,
     userText: string,
     format: object,
+    numPredictOverride?: number,
   ): Promise<unknown> {
     const response = await client.chat({
       model: config.chatModel,
@@ -153,7 +208,7 @@ export function createOllamaSanitizer(config: OllamaConfig): SanitizerClient {
       options: {
         temperature: 0,
         num_ctx: config.numCtx,
-        num_predict: config.numPredict,
+        num_predict: numPredictOverride ?? config.numPredict,
       },
     });
     return JSON.parse(response.message.content);
@@ -176,6 +231,25 @@ export function createOllamaSanitizer(config: OllamaConfig): SanitizerClient {
         CANDIDATE_JSON_SCHEMA,
       );
       return SanitizedCandidateSchema.parse(parsed);
+    },
+
+    async extractSkills(rawText) {
+      // Capped, unlike the other calls (which use config.numPredict,
+      // usually -1/unbounded): the "be exhaustive" instruction this call
+      // needs to counter recall misses (see SKILLS_EXTRACTION_SYSTEM_PROMPT
+      // above) made num_predict=-1 genuinely open-ended in practice on real
+      // hardware (2026-09-25) - one call ran for the better part of an hour
+      // instead of the usual ~70s. Even a CV naming 100+ distinct skills
+      // fits well under this in JSON-array form, so the cap only guards
+      // against runaway generation, not real output.
+      const EXTRACT_SKILLS_MAX_TOKENS = 1024;
+      const parsed = (await chatJson(
+        SKILLS_EXTRACTION_SYSTEM_PROMPT,
+        `List every technical skill mentioned anywhere in this document:\n\n${rawText}`,
+        SKILLS_ONLY_JSON_SCHEMA,
+        EXTRACT_SKILLS_MAX_TOKENS,
+      )) as { skills?: unknown };
+      return Array.isArray(parsed.skills) ? parsed.skills.filter((s): s is string => typeof s === 'string') : [];
     },
 
     async embed(text) {

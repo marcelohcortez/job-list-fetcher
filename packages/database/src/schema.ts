@@ -166,6 +166,8 @@ export interface LayaEvaluationTable {
   mismatch_reasoning: string | null;
   model_version: string | null;
   evaluated_at: string;
+  /** SQLite has no native boolean - 0/1, see migration 019. True when Laya's token budget cut off part of the combined job+CV text for this evaluation. */
+  truncated: number;
 }
 
 export interface JobDb {

@@ -100,6 +100,7 @@ export interface MatchedJob extends JobOpening {
   layaChoice: LayaVerdict | null;
   layaReasoning: string | null;
   layaMismatchReasoning: string | null;
+  layaTruncated: boolean;
 }
 
 export interface CandidateMatches {

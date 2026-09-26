@@ -86,6 +86,7 @@ describe('GET /matches', () => {
       sanitizer: {
         sanitizeJob: vi.fn(),
         sanitizeCandidate: vi.fn(),
+        extractSkills: vi.fn(),
         embed: vi.fn(),
       },
       vectorStore: {
@@ -157,7 +158,7 @@ describe('GET /matches', () => {
     await replaceCandidateSkills(db, candidateId, ['skill-python']);
 
     const semantic: SemanticPipeline = {
-      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), embed: vi.fn() },
+      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), extractSkills: vi.fn(), embed: vi.fn() },
       vectorStore: {
         upsertJob: vi.fn(),
         deleteJob: vi.fn(),
@@ -241,7 +242,7 @@ describe('GET /matches', () => {
     await replaceCandidateSkills(db, candidateId, ['skill-stakeholder-mgmt']);
 
     const semantic: SemanticPipeline = {
-      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), embed: vi.fn() },
+      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), extractSkills: vi.fn(), embed: vi.fn() },
       vectorStore: {
         upsertJob: vi.fn(),
         deleteJob: vi.fn(),
@@ -297,7 +298,7 @@ describe('GET /matches', () => {
     const candidateId = await addSanitizedCandidate('Alexander Zakabluk', 'design');
 
     const semantic: SemanticPipeline = {
-      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), embed: vi.fn() },
+      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), extractSkills: vi.fn(), embed: vi.fn() },
       vectorStore: {
         upsertJob: vi.fn(),
         deleteJob: vi.fn(),
@@ -345,7 +346,7 @@ describe('GET /matches', () => {
     await addSanitizedCandidate('Junior Dev', null, 'junior');
 
     const semantic: SemanticPipeline = {
-      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), embed: vi.fn() },
+      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), extractSkills: vi.fn(), embed: vi.fn() },
       vectorStore: {
         upsertJob: vi.fn(),
         deleteJob: vi.fn(),
@@ -390,7 +391,7 @@ describe('GET /matches', () => {
     await replaceCandidateSkills(db, candidateId, ['skill-only']);
 
     const semantic: SemanticPipeline = {
-      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), embed: vi.fn() },
+      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), extractSkills: vi.fn(), embed: vi.fn() },
       vectorStore: {
         upsertJob: vi.fn(),
         deleteJob: vi.fn(),
@@ -439,7 +440,7 @@ describe('GET /matches', () => {
     });
 
     const semantic: SemanticPipeline = {
-      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), embed: vi.fn() },
+      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), extractSkills: vi.fn(), embed: vi.fn() },
       vectorStore: {
         upsertJob: vi.fn(),
         deleteJob: vi.fn(),
@@ -469,7 +470,50 @@ describe('GET /matches', () => {
     expect(match.layaChoice).toBe('strong');
     expect(match.layaReasoning).toBe('Strong overlap on core backend responsibilities.');
     expect(match.layaMismatchReasoning).toBe('No notable gaps identified.');
+    expect(match.layaTruncated).toBe(false);
     expect(match.similarity).toBeCloseTo(0.5175);
+  });
+
+  it('surfaces layaTruncated when the persisted Laya evaluation was truncated', async () => {
+    await runIngestion(db, [fakeAdapter([record()])]);
+    const jobs = await db.selectFrom('job_openings').select('id').execute();
+    const jobOpeningId = jobs[0].id;
+
+    const candidateId = await addSanitizedCandidate('Trunk Ated');
+
+    await upsertLayaEvaluation(db, {
+      jobOpeningId,
+      candidateId,
+      score: 0.5,
+      choice: 'moderate',
+      reasoning: 'Partial overlap.',
+      truncated: true,
+    });
+
+    const semantic: SemanticPipeline = {
+      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), extractSkills: vi.fn(), embed: vi.fn() },
+      vectorStore: {
+        upsertJob: vi.fn(),
+        deleteJob: vi.fn(),
+        upsertCandidate: vi.fn(),
+        deleteCandidate: vi.fn(),
+        getCandidateEmbedding: vi.fn().mockResolvedValue([0.1, 0.2]),
+        getJobEmbedding: vi.fn().mockResolvedValue(null),
+        queryCandidatesForJob: vi.fn().mockResolvedValue([]),
+        queryJobsForCandidate: vi.fn().mockResolvedValue([{ id: jobOpeningId, similarity: 0.6 }]),
+        upsertRolePhrase: vi.fn(),
+        queryNearestRolePhrase: vi.fn(),
+        upsertSkill: vi.fn(),
+        queryNearestSkill: vi.fn(),
+      },
+      cvRefactor: { refactorCv: vi.fn() },
+    };
+
+    const app = createApp(db, [], semantic, { topK: 10, minSimilarity: 0, layaWeight: 0.3 });
+    const body = await (await app.request('/api/matches')).json();
+    const match = body.data[0].matches[0];
+
+    expect(match.layaTruncated).toBe(true);
   });
 
   it('falls back to the two-term blend when a pair has no persisted Laya evaluation', async () => {
@@ -480,7 +524,7 @@ describe('GET /matches', () => {
     await addSanitizedCandidate('No Laya Yet');
 
     const semantic: SemanticPipeline = {
-      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), embed: vi.fn() },
+      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), extractSkills: vi.fn(), embed: vi.fn() },
       vectorStore: {
         upsertJob: vi.fn(),
         deleteJob: vi.fn(),
@@ -522,6 +566,7 @@ describe('GET /matches', () => {
       sanitizer: {
         sanitizeJob: vi.fn(),
         sanitizeCandidate: vi.fn(),
+        extractSkills: vi.fn(),
         embed: vi.fn(),
       },
       vectorStore: {

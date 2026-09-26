@@ -17,6 +17,7 @@ import { layaEvaluationsMigration } from './015-laya-evaluations';
 import { savedJobsMigration } from './016-saved-jobs';
 import { layaMismatchReasoningMigration } from './017-laya-mismatch-reasoning';
 import { deadJobsMigration } from './018-dead-jobs';
+import { layaTruncatedMigration } from './019-laya-truncated';
 
 export const migrations: Record<string, Migration> = {
   '001-initial': initialMigration,
@@ -37,6 +38,7 @@ export const migrations: Record<string, Migration> = {
   '016-saved-jobs': savedJobsMigration,
   '017-laya-mismatch-reasoning': layaMismatchReasoningMigration,
   '018-dead-jobs': deadJobsMigration,
+  '019-laya-truncated': layaTruncatedMigration,
 };
 
 export const migrationProvider = {

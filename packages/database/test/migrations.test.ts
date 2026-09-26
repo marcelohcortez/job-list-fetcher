@@ -63,6 +63,14 @@ describe('migrations', () => {
       const indexes = jobColumns.flatMap((t) => t.columns).length;
       expect(indexes).toBeGreaterThan(0);
 
+      // 019-laya-truncated's `down` is a no-op (same SQLite DROP COLUMN
+      // caveat as 009-role-categories), so this rollback removes only its
+      // migration record - dead-jobs (018) is still the next one to undo.
+      await rollbackMigrations(db);
+      const afterLayaTruncated = await db.introspection.getTables();
+      expect(afterLayaTruncated.map((t) => t.name)).toContain('laya_evaluations');
+      expect(afterLayaTruncated.map((t) => t.name)).toContain('user_job_marks');
+
       await rollbackMigrations(db);
       const afterDeadJobs = await db.introspection.getTables();
       expect(afterDeadJobs.map((t) => t.name)).toContain('laya_evaluations');

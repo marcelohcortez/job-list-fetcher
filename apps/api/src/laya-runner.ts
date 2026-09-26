@@ -33,6 +33,7 @@ async function evaluatePair(
       choice: evaluation.choice,
       reasoning: evaluation.reasoning,
       mismatchReasoning: evaluation.mismatchReasoning,
+      truncated: evaluation.truncated,
     });
   } catch (err) {
     console.warn(

@@ -6,6 +6,8 @@ export interface LayaEvaluationView {
   choice: LayaVerdict;
   reasoning: string;
   mismatchReasoning: string | null;
+  /** True when Laya's token budget cut off part of the combined job+CV text for this evaluation - see migration 019. */
+  truncated: boolean;
 }
 
 export async function upsertLayaEvaluation(
@@ -18,9 +20,11 @@ export async function upsertLayaEvaluation(
     reasoning: string;
     mismatchReasoning?: string | null;
     modelVersion?: string | null;
+    truncated?: boolean;
   },
 ): Promise<void> {
   const now = new Date().toISOString();
+  const truncated = input.truncated ? 1 : 0;
   await db
     .insertInto('laya_evaluations')
     .values({
@@ -32,6 +36,7 @@ export async function upsertLayaEvaluation(
       mismatch_reasoning: input.mismatchReasoning ?? null,
       model_version: input.modelVersion ?? null,
       evaluated_at: now,
+      truncated,
     })
     .onConflict((oc) =>
       oc.columns(['job_opening_id', 'candidate_id']).doUpdateSet((eb) => ({
@@ -41,6 +46,7 @@ export async function upsertLayaEvaluation(
         mismatch_reasoning: eb.ref('excluded.mismatch_reasoning'),
         model_version: eb.ref('excluded.model_version'),
         evaluated_at: eb.ref('excluded.evaluated_at'),
+        truncated: eb.ref('excluded.truncated'),
       })),
     )
     .execute();
@@ -55,7 +61,7 @@ export async function getLayaEvaluationsForCandidate(
   if (jobOpeningIds.length === 0) return new Map();
   const rows = await db
     .selectFrom('laya_evaluations')
-    .select(['job_opening_id', 'score', 'choice', 'reasoning', 'mismatch_reasoning'])
+    .select(['job_opening_id', 'score', 'choice', 'reasoning', 'mismatch_reasoning', 'truncated'])
     .where('candidate_id', '=', candidateId)
     .where('job_opening_id', 'in', jobOpeningIds)
     .execute();
@@ -67,6 +73,7 @@ export async function getLayaEvaluationsForCandidate(
         choice: row.choice,
         reasoning: row.reasoning,
         mismatchReasoning: row.mismatch_reasoning,
+        truncated: row.truncated !== 0,
       },
     ]),
   );

@@ -39,6 +39,27 @@ function warnIfSuspiciouslyEmpty(
   }
 }
 
+/**
+ * Unions a second extraction pass's skills into the main sanitized profile's
+ * requiredSkills, deduped case/whitespace-insensitively so a skill the main
+ * pass already found (the common case) never appears twice - see
+ * SKILLS_EXTRACTION_SYSTEM_PROMPT in ollama.ts for why this second pass
+ * exists. Keeps the main pass's own casing/wording for anything it already
+ * found; only genuinely new items come from `extra`.
+ */
+function mergeSkills(primary: readonly string[], extra: readonly string[]): string[] {
+  const seen = new Set(primary.map((s) => s.trim().toLowerCase()));
+  const merged = [...primary];
+  for (const skill of extra) {
+    const key = skill.trim().toLowerCase();
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      merged.push(skill);
+    }
+  }
+  return merged;
+}
+
 export interface ProcessedJob {
   sanitized: SanitizedJob;
   anchorDocument: string;
@@ -54,7 +75,18 @@ export async function processJobOpening(
   jobOpeningId: string,
   rawText: string,
 ): Promise<ProcessedJob> {
-  const sanitized = await pipeline.sanitizer.sanitizeJob(rawText);
+  // Sequential, not Promise.all: firing both calls concurrently at the same
+  // local Ollama instance stalled it indefinitely on real hardware (2026-09-
+  // 25) - a single-model local server doesn't handle two concurrent chat
+  // completions against the same model safely, it just hangs. Neither call
+  // depends on the other's result, so this only costs latency, not
+  // correctness.
+  const sanitizedJob = await pipeline.sanitizer.sanitizeJob(rawText);
+  const extraSkills = await pipeline.sanitizer.extractSkills(rawText);
+  const sanitized = {
+    ...sanitizedJob,
+    requiredSkills: mergeSkills(sanitizedJob.requiredSkills, extraSkills),
+  };
   warnIfSuspiciouslyEmpty('job opening', jobOpeningId, rawText, sanitized);
   const anchorDocument = buildAnchorDocument(sanitized);
   const embedding = await pipeline.sanitizer.embed(anchorDocument);
@@ -74,7 +106,13 @@ export async function processCandidate(
   // canonical ids in a `Set` when they're stored. sanitizeCandidate always
   // runs against the rewritten text, not the raw extraction.
   const refactoredText = await pipeline.cvRefactor.refactorCv(rawText);
-  const sanitized = await pipeline.sanitizer.sanitizeCandidate(refactoredText);
+  // Sequential for the same reason as processJobOpening above.
+  const sanitizedCandidate = await pipeline.sanitizer.sanitizeCandidate(refactoredText);
+  const extraSkills = await pipeline.sanitizer.extractSkills(refactoredText);
+  const sanitized = {
+    ...sanitizedCandidate,
+    requiredSkills: mergeSkills(sanitizedCandidate.requiredSkills, extraSkills),
+  };
   warnIfSuspiciouslyEmpty('candidate', candidateId, rawText, sanitized);
   // The candidate's name is metadata only - never embedded, see anchor.ts.
   const { candidateName: _candidateName, ...profile } = sanitized;

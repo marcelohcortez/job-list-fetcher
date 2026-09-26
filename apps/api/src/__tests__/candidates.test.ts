@@ -37,6 +37,7 @@ function fakeSemantic(overrides: Partial<SemanticPipeline> = {}): SemanticPipeli
         experienceProfile: '5 years',
         coreResponsibilities: ['built backend services'],
       }),
+      extractSkills: vi.fn().mockResolvedValue([]),
       embed: vi.fn().mockResolvedValue([0.1, 0.2]),
     },
     vectorStore: {
@@ -90,6 +91,7 @@ describe('POST /candidates', () => {
       sanitizer: {
         sanitizeJob: vi.fn(),
         sanitizeCandidate: vi.fn().mockRejectedValue(new Error('model down')),
+        extractSkills: vi.fn().mockResolvedValue([]),
         embed: vi.fn(),
       },
     });

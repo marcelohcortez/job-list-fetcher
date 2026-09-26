@@ -62,6 +62,7 @@ describe('laya-evaluations repository', () => {
       choice: 'moderate',
       reasoning: 'Solid backend overlap.',
       mismatchReasoning: 'Missing cloud experience.',
+      truncated: false,
     });
   });
 
@@ -93,6 +94,29 @@ describe('laya-evaluations repository', () => {
     const evaluations = await getLayaEvaluationsForCandidate(db, candidate.id, [jobOpeningId]);
     expect(evaluations.get(jobOpeningId)?.choice).toBe('strong');
     expect(evaluations.get(jobOpeningId)?.score).toBe(0.9);
+  });
+
+  it('round-trips truncated as a real boolean, not a raw 0/1', async () => {
+    const jobOpeningId = await seedJob('rec-4');
+    const candidate = await insertCandidate(db, {
+      fileName: 'cv4.pdf',
+      contentType: 'application/pdf',
+      sizeBytes: 5,
+      pdfBytes: new Uint8Array([1]),
+      extractedText: 'text',
+    });
+
+    await upsertLayaEvaluation(db, {
+      jobOpeningId,
+      candidateId: candidate.id,
+      score: 0.5,
+      choice: 'moderate',
+      reasoning: 'reasoning',
+      truncated: true,
+    });
+
+    const evaluations = await getLayaEvaluationsForCandidate(db, candidate.id, [jobOpeningId]);
+    expect(evaluations.get(jobOpeningId)?.truncated).toBe(true);
   });
 
   it('returns an empty map for a candidate with no evaluations', async () => {

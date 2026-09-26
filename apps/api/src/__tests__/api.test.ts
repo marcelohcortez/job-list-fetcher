@@ -16,6 +16,7 @@ const fakeSemantic: SemanticPipeline = {
     sanitizeJob: () => Promise.reject(new Error('not used in these tests')),
     sanitizeCandidate: () =>
       Promise.reject(new Error('not used in these tests')),
+    extractSkills: () => Promise.reject(new Error('not used in these tests')),
     embed: () => Promise.reject(new Error('not used in these tests')),
   },
   vectorStore: {

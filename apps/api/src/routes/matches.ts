@@ -112,6 +112,7 @@ type JobWithSimilarity = Omit<JobOpening, 'rawPayload'> & {
   layaChoice: LayaVerdict | null;
   layaReasoning: string | null;
   layaMismatchReasoning: string | null;
+  layaTruncated: boolean;
   userMark: UserMark | null;
   seenAt: string | null;
   sentCvIds: string[];
@@ -132,6 +133,7 @@ function publicJob(
     layaChoice: LayaVerdict | null;
     layaReasoning: string | null;
     layaMismatchReasoning: string | null;
+    layaTruncated: boolean;
   },
   mark: {
     userMark: UserMark | null;
@@ -359,7 +361,16 @@ async function matchesForCandidate(
       config.minSkillsForFullConfidence ?? DEFAULT_MIN_SKILLS_FOR_FULL_CONFIDENCE,
       { score: layaEvaluation?.score ?? null, weight: config.layaWeight ?? DEFAULT_LAYA_WEIGHT },
     );
-    if (score < config.minSimilarity) continue;
+    // `minSimilarity` gates the blended skill/vector/Laya score, but a
+    // pair Laya itself called 'moderate' or 'strong' is let through
+    // regardless - Laya reads the full documents and can see transferable
+    // fit (e.g. version-suffixed or cross-provider skills) that the
+    // literal skill-coverage term can't credit, so the blended score
+    // shouldn't be able to veto Laya's own judgment. `score` (with Laya's
+    // term still folded in) is what's shown/sorted on either way - this
+    // only changes whether the pair is dropped, never the displayed value.
+    const layaOverride = layaEvaluation?.choice === 'strong' || layaEvaluation?.choice === 'moderate';
+    if (score < config.minSimilarity && !layaOverride) continue;
     jobs.push(
       publicJob(
         job,
@@ -376,6 +387,7 @@ async function matchesForCandidate(
           layaChoice: layaEvaluation?.choice ?? null,
           layaReasoning: layaEvaluation?.reasoning ?? null,
           layaMismatchReasoning: layaEvaluation?.mismatchReasoning ?? null,
+          layaTruncated: layaEvaluation?.truncated ?? false,
         },
         {
           userMark: marks[job.id]?.mark ?? null,
