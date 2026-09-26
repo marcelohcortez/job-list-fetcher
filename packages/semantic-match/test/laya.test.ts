@@ -117,4 +117,22 @@ describe('parseReasoningResponse', () => {
       mismatchReasoning: '',
     });
   });
+
+  it('still extracts the mismatch section when the MATCH header is missing', () => {
+    const content =
+      'Strong React overlap and shipped similar dashboards.\n\n' +
+      'MISMATCH:\nNo Kubernetes experience mentioned.';
+    expect(parseReasoningResponse(content)).toEqual({
+      reasoning: 'Strong React overlap and shipped similar dashboards.',
+      mismatchReasoning: 'No Kubernetes experience mentioned.',
+    });
+  });
+
+  it('does not let "MATCH:" match inside "MISMATCH:" when only the mismatch header is present', () => {
+    const content = 'MISMATCH:\nNo Kubernetes experience mentioned.';
+    expect(parseReasoningResponse(content)).toEqual({
+      reasoning: '',
+      mismatchReasoning: 'No Kubernetes experience mentioned.',
+    });
+  });
 });

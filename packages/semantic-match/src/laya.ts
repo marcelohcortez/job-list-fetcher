@@ -182,7 +182,8 @@ function findMarker(
   // Tolerate the model varying case or wrapping the marker in markdown
   // emphasis (**MATCH:**) despite being told not to - a literal indexOf
   // would otherwise miss it and silently collapse both sections together.
-  const match = new RegExp(`\\**${marker.replace(':', '')}:\\**`, 'i').exec(
+  // Negative lookbehind keeps "MATCH:" from matching inside "MISMATCH:".
+  const match = new RegExp(`(?<![A-Za-z])\\**${marker.replace(':', '')}:\\**`, 'i').exec(
     content,
   );
   return match ? { start: match.index, end: match.index + match[0].length } : null;
@@ -192,15 +193,27 @@ export function parseReasoningResponse(content: string): ReasoningResult {
   const matchMarker = findMarker(content, MATCH_MARKER);
   const mismatchMarker = findMarker(content, MISMATCH_MARKER);
 
-  if (!matchMarker || !mismatchMarker || mismatchMarker.start < matchMarker.start) {
-    // Model didn't follow the format - fall back to treating the whole
-    // response as the positive reasoning rather than losing it.
-    return { reasoning: content.trim(), mismatchReasoning: '' };
+  if (matchMarker && mismatchMarker && matchMarker.start < mismatchMarker.start) {
+    // Both markers present in the expected order - clean split.
+    return {
+      reasoning: content.slice(matchMarker.end, mismatchMarker.start).trim(),
+      mismatchReasoning: content.slice(mismatchMarker.end).trim(),
+    };
   }
 
-  const reasoning = content.slice(matchMarker.end, mismatchMarker.start).trim();
-  const mismatchReasoning = content.slice(mismatchMarker.end).trim();
-  return { reasoning, mismatchReasoning };
+  if (mismatchMarker) {
+    // Model wrote the gaps section but skipped/misplaced the MATCH header -
+    // still extract the mismatch text instead of dropping it, and treat
+    // whatever precedes it as the positive reasoning.
+    return {
+      reasoning: content.slice(0, mismatchMarker.start).trim(),
+      mismatchReasoning: content.slice(mismatchMarker.end).trim(),
+    };
+  }
+
+  // Model didn't follow the format at all - fall back to treating the whole
+  // response as the positive reasoning rather than losing it.
+  return { reasoning: content.trim(), mismatchReasoning: '' };
 }
 
 /** Generates the `reasoning`/`mismatchReasoning` text via the same local Ollama model used for sanitization. */

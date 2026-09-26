@@ -25,11 +25,12 @@ import {
   type JobOpening,
 } from './api';
 import { JobCard } from './components/JobCard';
-import { matchesJobSearch } from './components/format';
+import { matchesJobSearch, sortByPublishedDesc } from './components/format';
 import { UploadCvTab } from './UploadCvTab';
 import { UploadCvsTab } from './UploadCvsTab';
 import { MatchesTab } from './MatchesTab';
 import { ConfigTab } from './ConfigTab';
+import { MARK_TOAST_MESSAGE, SuccessToast, useSuccessToast } from './components/Toast';
 
 type Tab =
   | 'jobs'
@@ -53,13 +54,13 @@ const NAV_ITEMS: {
   label: string;
   Icon: typeof WorkOutlineOutlinedIcon;
 }[] = [
-  { id: 'jobs', path: '/jobs', label: 'Openings', Icon: WorkOutlineOutlinedIcon },
+  { id: 'matches', path: '/matches', label: 'Matches', Icon: TrackChangesOutlinedIcon },
   { id: 'applied', path: '/applied', label: 'Applied', Icon: TaskAltOutlinedIcon },
   { id: 'saved', path: '/saved', label: 'Saved', Icon: BookmarkBorderOutlinedIcon },
+  { id: 'jobs', path: '/jobs', label: 'Openings', Icon: WorkOutlineOutlinedIcon },
   { id: 'history', path: '/history', label: 'History', Icon: HistoryOutlinedIcon },
   { id: 'upload-cv', path: '/upload-cv', label: 'Upload CV', Icon: UploadFileOutlinedIcon },
   { id: 'upload-cvs', path: '/upload-cvs', label: 'Upload CVs', Icon: LibraryBooksOutlinedIcon },
-  { id: 'matches', path: '/matches', label: 'Matches', Icon: TrackChangesOutlinedIcon },
   { id: 'config', path: '/config', label: 'Configuration', Icon: SettingsOutlinedIcon },
 ];
 
@@ -157,8 +158,8 @@ function JobsTab({
     activeSource === ALL_SOURCES
       ? activeJobs
       : activeJobs.filter((job) => job.sourceName === activeSource);
-  const visibleJobs = sourceJobs.filter((job) =>
-    matchesJobSearch(job, search, candidates),
+  const visibleJobs = sortByPublishedDesc(
+    sourceJobs.filter((job) => matchesJobSearch(job, search, candidates)),
   );
 
   return (
@@ -273,9 +274,11 @@ function AppliedTab({
   topMatchesByJobId: Record<string, string[]>;
 }) {
   const [search, setSearch] = useState('');
-  const appliedJobs = jobs
-    .filter((job) => job.userMark === 'applied')
-    .filter((job) => matchesJobSearch(job, search, candidates));
+  const appliedJobs = sortByPublishedDesc(
+    jobs
+      .filter((job) => job.userMark === 'applied')
+      .filter((job) => matchesJobSearch(job, search, candidates)),
+  );
 
   return (
     <>
@@ -353,9 +356,11 @@ function SavedTab({
   topMatchesByJobId: Record<string, string[]>;
 }) {
   const [search, setSearch] = useState('');
-  const savedJobs = jobs
-    .filter((job) => job.userMark === 'saved')
-    .filter((job) => matchesJobSearch(job, search, candidates));
+  const savedJobs = sortByPublishedDesc(
+    jobs
+      .filter((job) => job.userMark === 'saved')
+      .filter((job) => matchesJobSearch(job, search, candidates)),
+  );
 
   return (
     <>
@@ -450,11 +455,13 @@ function HistoryTab({
   ).length;
   const deadCount = historyJobs.filter((job) => job.userMark === 'dead').length;
 
-  const filteredHistoryJobs = historyJobs.filter((job) => {
-    if (statusFilter === 'seen') return job.userMark !== 'dead' && job.seenAt;
-    if (statusFilter === 'dead') return job.userMark === 'dead';
-    return true;
-  });
+  const filteredHistoryJobs = sortByPublishedDesc(
+    historyJobs.filter((job) => {
+      if (statusFilter === 'seen') return job.userMark !== 'dead' && job.seenAt;
+      if (statusFilter === 'dead') return job.userMark === 'dead';
+      return true;
+    }),
+  );
 
   return (
     <>
@@ -554,6 +561,7 @@ export default function App() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [pendingMarks, setPendingMarks] = useState<Record<string, boolean>>({});
   const [pendingSeen, setPendingSeen] = useState<Record<string, boolean>>({});
+  const { toast, showToast } = useSuccessToast();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [pendingSentCvs, setPendingSentCvs] = useState<Record<string, boolean>>({});
   const [topMatchesByJobId, setTopMatchesByJobId] = useState<
@@ -651,6 +659,7 @@ export default function App() {
       setJobs((prev) =>
         prev.map((j) => (j.id === job.id ? { ...j, userMark: saved } : j)),
       );
+      if (saved) showToast(MARK_TOAST_MESSAGE[saved]);
     } catch (err) {
       setError((err as Error).message);
       setJobs((prev) =>
@@ -678,6 +687,7 @@ export default function App() {
       setJobs((prev) =>
         prev.map((j) => (j.id === job.id ? { ...j, seenAt: saved } : j)),
       );
+      if (saved) showToast('marked as seen');
     } catch (err) {
       setError((err as Error).message);
       setJobs((prev) =>
@@ -739,6 +749,7 @@ export default function App() {
 
   return (
     <div className="shell">
+      <SuccessToast message={toast} />
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark">JLF</span>

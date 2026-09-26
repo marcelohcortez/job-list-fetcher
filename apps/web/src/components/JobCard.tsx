@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import type { Candidate, JobMark, JobOpening, LayaVerdict } from '../api';
 import { formatDate } from './format';
 
@@ -25,7 +26,14 @@ interface JobCardProps {
 }
 
 function candidateLabel(candidate: Candidate): string {
-  return candidate.candidateName || candidate.fileName;
+  const name = candidate.candidateName || candidate.fileName;
+  return candidate.candidateTitle ? `${name} - ${candidate.candidateTitle}` : name;
+}
+
+function sortedByLabel(candidates: Candidate[]): Candidate[] {
+  return [...candidates].sort((a, b) =>
+    candidateLabel(a).localeCompare(candidateLabel(b)),
+  );
 }
 
 const VISIBLE_SKILL_CAP = 6;
@@ -163,6 +171,10 @@ export function JobCard({
   onChangeSentCvs,
   topMatchNames,
 }: JobCardProps) {
+  const [sentCvsSearch, setSentCvsSearch] = useState('');
+  const [pendingSelection, setPendingSelection] = useState<string[] | null>(null);
+  const selectedCvIds = pendingSelection ?? job.sentCvIds;
+  const sentCvsDetailsRef = useRef<HTMLDetailsElement>(null);
   const markButton = (
     mark: JobMark,
     activeLabel: string,
@@ -216,9 +228,11 @@ export function JobCard({
           <span className={`laya-choice laya-choice-${layaChoice}`}> {layaChoice}</span>
         </p>
       )}
-      {similarity != null && layaScore != null && (
+      {(baseScore ?? similarity) != null && layaScore != null && (
         <p className="match overall-match">
-          <span className="match-score">{Math.round(similarity * 100)}% overall match</span>
+          <span className="match-score">
+            {Math.round((((baseScore ?? similarity)! + layaScore) / 2) * 100)}% overall match
+          </span>
         </p>
       )}
       {((matchedSkills && matchedSkills.length > 0) ||
@@ -256,40 +270,81 @@ export function JobCard({
       {onChangeSentCvs && candidates && (
         <div className="sent-cvs">
           <span className="sent-cvs-label">CVs sent</span>
-          <details className="sent-cvs-picker">
+          <details
+            ref={sentCvsDetailsRef}
+            className="sent-cvs-picker"
+            onToggle={(e) => {
+              const opened = (e.currentTarget as HTMLDetailsElement).open;
+              if (opened) {
+                setPendingSelection(job.sentCvIds);
+                return;
+              }
+              if (pendingSelection !== null) {
+                const changed =
+                  pendingSelection.length !== job.sentCvIds.length ||
+                  pendingSelection.some((id) => !job.sentCvIds.includes(id));
+                if (changed) onChangeSentCvs(job, pendingSelection);
+                setPendingSelection(null);
+              }
+              setSentCvsSearch('');
+            }}
+          >
             <summary>
               {job.sentCvIds.length === 0
                 ? 'None selected'
-                : job.sentCvIds
-                    .map((id) => {
-                      const candidate = candidates.find((c) => c.id === id);
-                      return candidate ? candidateLabel(candidate) : null;
-                    })
-                    .filter(Boolean)
+                : sortedByLabel(
+                    candidates.filter((c) => job.sentCvIds.includes(c.id)),
+                  )
+                    .map(candidateLabel)
                     .join(', ')}
             </summary>
-            <div className="sent-cvs-options">
-              {candidates.length === 0 ? (
-                <p className="muted">No CVs uploaded yet.</p>
-              ) : (
-                candidates.map((candidate) => (
-                  <label key={candidate.id} className="sent-cvs-option">
-                    <input
-                      type="checkbox"
-                      checked={job.sentCvIds.includes(candidate.id)}
-                      disabled={sentCvsDisabled}
-                      onChange={(e) => {
-                        const next = e.target.checked
-                          ? [...job.sentCvIds, candidate.id]
-                          : job.sentCvIds.filter((id) => id !== candidate.id);
-                        onChangeSentCvs(job, next);
-                      }}
-                    />
-                    {candidateLabel(candidate)}
-                  </label>
-                ))
-              )}
-            </div>
+            {candidates.length === 0 ? (
+              <p className="muted">No CVs uploaded yet.</p>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  className="sent-cvs-search"
+                  placeholder="Search candidates..."
+                  value={sentCvsSearch}
+                  onChange={(e) => setSentCvsSearch(e.target.value)}
+                />
+                <div className="sent-cvs-options">
+                  {sortedByLabel(candidates)
+                    .filter((candidate) =>
+                      candidateLabel(candidate)
+                        .toLowerCase()
+                        .includes(sentCvsSearch.trim().toLowerCase()),
+                    )
+                    .map((candidate) => (
+                      <label key={candidate.id} className="sent-cvs-option">
+                        <input
+                          type="checkbox"
+                          checked={selectedCvIds.includes(candidate.id)}
+                          disabled={sentCvsDisabled}
+                          onChange={(e) => {
+                            const next = e.target.checked
+                              ? [...selectedCvIds, candidate.id]
+                              : selectedCvIds.filter((id) => id !== candidate.id);
+                            setPendingSelection(next);
+                          }}
+                        />
+                        {candidateLabel(candidate)}
+                      </label>
+                    ))}
+                </div>
+                <button
+                  type="button"
+                  className="sent-cvs-save"
+                  disabled={sentCvsDisabled}
+                  onClick={() => {
+                    if (sentCvsDetailsRef.current) sentCvsDetailsRef.current.open = false;
+                  }}
+                >
+                  Save
+                </button>
+              </>
+            )}
           </details>
         </div>
       )}

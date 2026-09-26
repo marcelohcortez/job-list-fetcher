@@ -9,6 +9,19 @@ export function formatDate(value: string | null): string | null {
   });
 }
 
+interface PublishedJob {
+  publishedAt: string | null;
+}
+
+/** Newest first; jobs missing a publish date sort last. */
+export function sortByPublishedDesc<T extends PublishedJob>(jobs: T[]): T[] {
+  return [...jobs].sort((a, b) => {
+    const aTime = a.publishedAt ? new Date(a.publishedAt).getTime() : -Infinity;
+    const bTime = b.publishedAt ? new Date(b.publishedAt).getTime() : -Infinity;
+    return bTime - aTime;
+  });
+}
+
 export function snippet(text: string | null, max = 240): string | null {
   if (!text) return null;
   const clean = text.trim();

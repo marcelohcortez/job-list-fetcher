@@ -8,6 +8,8 @@ import {
   type JobOpening,
 } from './api';
 import { JobCard } from './components/JobCard';
+import { MARK_TOAST_MESSAGE, SuccessToast, useSuccessToast } from './components/Toast';
+import { sortByPublishedDesc } from './components/format';
 
 interface MatchesTabProps {
   onMarkChange?: (jobId: string, mark: JobMark | null) => void;
@@ -28,6 +30,7 @@ export function MatchesTab({ onMarkChange }: MatchesTabProps) {
   const [search, setSearch] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchBoxRef = useRef<HTMLDivElement>(null);
+  const { toast, showToast } = useSuccessToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,6 +69,7 @@ export function MatchesTab({ onMarkChange }: MatchesTabProps) {
       const saved = await setJobMark(job.id, next);
       applyMark(saved);
       onMarkChange?.(job.id, saved);
+      if (saved) showToast(MARK_TOAST_MESSAGE[saved]);
     } catch (err) {
       setError((err as Error).message);
       applyMark(current);
@@ -97,6 +101,7 @@ export function MatchesTab({ onMarkChange }: MatchesTabProps) {
     try {
       const saved = await setJobSeen(job.id, next);
       applySeen(saved);
+      if (saved) showToast('marked as seen');
     } catch (err) {
       setError((err as Error).message);
       applySeen(current);
@@ -110,9 +115,14 @@ export function MatchesTab({ onMarkChange }: MatchesTabProps) {
 
   const sortedMatches = useMemo(
     () =>
-      [...candidateMatches].sort((a, b) =>
-        candidateLabel(a).localeCompare(candidateLabel(b)),
-      ),
+      [...candidateMatches]
+        .map((entry) => ({
+          ...entry,
+          matches: sortByPublishedDesc(
+            entry.matches.filter((job) => job.userMark !== 'dead'),
+          ),
+        }))
+        .sort((a, b) => candidateLabel(a).localeCompare(candidateLabel(b))),
     [candidateMatches],
   );
 
@@ -149,6 +159,7 @@ export function MatchesTab({ onMarkChange }: MatchesTabProps) {
 
   return (
     <section className="matches-tab">
+      <SuccessToast message={toast} />
       {error && (
         <div className="error" role="alert">
           {error}

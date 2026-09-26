@@ -1,6 +1,6 @@
 /**
- * One-off cleanup: deletes job_openings whose published_at is more than 6
- * months old, now that ingestion (see isJobEligible in
+ * One-off cleanup: deletes job_openings whose published_at is more than 1
+ * month old, now that ingestion (see isJobEligible in
  * @job-fetcher/domain) rejects such records before they're ever stored.
  * Existing rows ingested before that check landed are still sitting in the
  * DB and need a manual sweep. Child rows (source_records, job_embeddings,
@@ -23,7 +23,7 @@ async function main() {
   await runMigrations(db);
 
   const cutoff = new Date();
-  cutoff.setMonth(cutoff.getMonth() - 6);
+  cutoff.setMonth(cutoff.getMonth() - 1);
   const cutoffIso = cutoff.toISOString();
 
   const stale = await db

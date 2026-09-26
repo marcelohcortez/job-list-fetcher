@@ -37,6 +37,31 @@ describe('categorizeRoleTitle', () => {
     expect(categorizeRoleTitle('Chief Happiness Officer Assistant To The')).not.toBeNull();
     expect(categorizeRoleTitle('Xyzzy Plugh')).toBeNull();
   });
+
+  it('classifies embedded/native-mobile titles into their own isolated categories', () => {
+    expect(categorizeRoleTitle('Embedded Software Engineer')).toBe('embedded-systems');
+    expect(categorizeRoleTitle('Senior C++ Developer Embedded Automotive')).toBe('embedded-systems');
+    expect(categorizeRoleTitle('Android Developer')).toBe('mobile-native');
+    expect(categorizeRoleTitle('iOS Engineer')).toBe('mobile-native');
+    // Ambiguous titles (no unambiguous native-stack keyword) stay in the
+    // generic engineering bucket rather than being force-isolated - a real
+    // JVM backend posting seen in the wild, not a native Android role.
+    expect(categorizeRoleTitle('Senior Developer (Java/Kotlin)')).toBe('engineering');
+  });
+
+  it('classifies fused Swedish compound titles by splitting and translating known suffixes/roots', () => {
+    // Regression coverage for the 2026-09-26 audit: these titles have no
+    // internal `\b` word boundary for the English-only patterns above to
+    // match without the Swedish-compound handling in `normalizeTitle`.
+    expect(categorizeRoleTitle('Embeddedutvecklare')).toBe('embedded-systems');
+    expect(categorizeRoleTitle('Android-utvecklare')).toBe('mobile-native');
+    expect(categorizeRoleTitle('Systemutvecklare')).toBe('engineering');
+    expect(categorizeRoleTitle('Dataingenjör')).toBe('data-ai');
+    expect(categorizeRoleTitle('Molnarkitekt')).toBe('devops-cloud');
+    expect(categorizeRoleTitle('Systemkonsult')).toBe('consulting-advisory');
+    expect(categorizeRoleTitle('Produktägare')).toBe('product-management');
+    expect(categorizeRoleTitle('IT-projektledare')).toBe('delivery-management');
+  });
 });
 
 describe('areRoleCategoriesCompatible', () => {

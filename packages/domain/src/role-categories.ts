@@ -13,6 +13,8 @@ export const ROLE_CATEGORIES = [
   'leadership',
   'devops-cloud',
   'data-ai',
+  'embedded-systems',
+  'mobile-native',
   'product-management',
   'delivery-management',
   'business-analysis',
@@ -23,15 +25,63 @@ export const ROLE_CATEGORIES = [
 
 export type RoleCategory = (typeof ROLE_CATEGORIES)[number];
 
+/**
+ * A fused Swedish compound noun ending in one of these role-suffix
+ * morphemes (e.g. "Embeddedutvecklare", "Systemarkitekt") has no internal
+ * `\b` word boundary for a regex to latch onto - unlike a hyphenated title
+ * ("Android-utvecklare"), which `normalizeTitle`'s dash-to-space step
+ * already turns into two separate words. Splitting on these suffixes (an
+ * optional linking "s" first, per Swedish compounding rules, e.g.
+ * "säkerhets-ingenjör") recovers that boundary so the patterns below - which
+ * only know English vocabulary - have a real prefix word to test.
+ */
+const SWEDISH_SUFFIX_SPLIT = /([a-z]+?)s?(utvecklare|ingenjor|arkitekt|konsult|analytiker|specialist)\b/g;
+
+/**
+ * Common Swedish tech-title roots/suffixes translated to their English
+ * equivalent, applied after `SWEDISH_SUFFIX_SPLIT` has isolated them as
+ * their own word (or, for compound roots like "sakerhet", as a substring
+ * within the split-off prefix). Ordered longest-prefix-first so e.g.
+ * "sakerhets" is consumed before the shorter "sakerhet" would leave a stray
+ * "s" behind. Deliberately narrow to roots actually seen in the job source
+ * boards' Swedish titles (see DEFAULT_TARGET_ROLES's Swedish section) -
+ * not an attempt at general Swedish->English translation.
+ */
+const SWEDISH_WORD_TRANSLATIONS: readonly (readonly [RegExp, string])[] = [
+  [/sakerhets/g, 'security'],
+  [/sakerhet/g, 'security'],
+  [/mjukvarus/g, 'software'],
+  [/mjukvaru/g, 'software'],
+  [/mjukvara/g, 'software'],
+  [/molns/g, 'cloud'],
+  [/moln/g, 'cloud'],
+  [/losnings/g, 'solution'],
+  [/losning/g, 'solution'],
+  [/produktagare/g, 'product owner'],
+  [/projektledare/g, 'project manager'],
+  [/\butvecklare\b/g, 'developer'],
+  [/\bingenjor\b/g, 'engineer'],
+  [/\barkitekt\b/g, 'architect'],
+  [/\bkonsult\b/g, 'consultant'],
+  [/\banalytiker\b/g, 'analyst'],
+];
+
 function normalizeTitle(value: string): string {
   if (!value) return '';
-  return value
+  let normalized = value
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/[-–—/]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+  normalized = normalized.replace(SWEDISH_SUFFIX_SPLIT, (_match, prefix, suffix) =>
+    prefix ? `${prefix} ${suffix}` : suffix,
+  );
+  for (const [pattern, replacement] of SWEDISH_WORD_TRANSLATIONS) {
+    normalized = normalized.replace(pattern, replacement);
+  }
+  return normalized;
 }
 
 /**
@@ -56,6 +106,26 @@ export const DEFAULT_CATEGORY_PATTERN_SOURCES: readonly (readonly [RoleCategory,
   [
     'data-ai',
     '\\b(data engineer|data platform|analytics engineer|machine learning|ml engineer|ai engineer|applied ai|data scientist)\\b',
+  ],
+  [
+    'embedded-systems',
+    '\\b(embedded|firmware|firmware engineer|hardware engineer|electronics engineer|driver developer|device driver|rtos|bare[- ]?metal|fpga|microcontroller|\\bplc\\b)\\b',
+  ],
+  [
+    // Deliberately narrow to "android"/"ios" only, not "mobile" or a bare
+    // "swift"/"kotlin" - those name platform SDKs no cross-platform or
+    // backend stack shares (Android SDK/Kotlin-for-Android vs Java/Kotlin
+    // backend, or Swift/UIKit vs a JS-based React Native app), so an
+    // "Android Developer"/"iOS Engineer" title is unambiguously native-
+    // mobile. "Mobile Developer"/"Senior Software Engineer, Mobile" and a
+    // bare "Kotlin" title (e.g. "Senior Developer (Java/Kotlin)", a JVM
+    // backend role in the wild - see the 2026-09-26 audit) are genuinely
+    // ambiguous about native vs. cross-platform/backend and are left in
+    // `engineering`, where skill coverage (Swift/Kotlin/Android SDK vs.
+    // React Native/JS) still does the discriminating without risking a
+    // false isolation penalty against a legitimately cross-platform CV.
+    'mobile-native',
+    '\\b(android|ios)\\b',
   ],
   ['product-management', '\\b(product manager|product owner|program manager|technical program manager)\\b'],
   ['delivery-management', '\\b(delivery manager|project manager|scrum master|engagement manager|programme manager)\\b'],
@@ -153,6 +223,19 @@ const ADJACENT_CATEGORIES: Readonly<Record<RoleCategory, ReadonlySet<RoleCategor
     'consulting-advisory',
   ]),
   design: new Set(['design']),
+  // Deliberately isolated, same rationale as `design` above: a plain
+  // engineering/frontend/backend CV with no embedded/firmware/hardware
+  // skills is not a reasonable match for an embedded-systems opening (and
+  // vice versa) just because both titles contain "developer"/"engineer" -
+  // see the 2026-09-26 matching-quality report (a 78%/43% Laya/skill-vector
+  // match on a frontend-only CV against an "Embedded Developer - C/C++"
+  // posting, with zero embedded/C/C++ skills on the CV either side).
+  'embedded-systems': new Set(['embedded-systems']),
+  // Same isolation rationale as `embedded-systems`: none of the current CVs
+  // list Swift/Kotlin/Android SDK/Xcode, and none of `TARGET_ROLES` is a
+  // native-mobile role - so a confident native-mobile title match against a
+  // web/backend-only CV should be penalized, not treated as compatible.
+  'mobile-native': new Set(['mobile-native']),
   'sales-customer-success': new Set(['sales-customer-success', 'consulting-advisory', 'delivery-management']),
 };
 

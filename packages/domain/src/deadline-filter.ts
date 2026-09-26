@@ -28,9 +28,9 @@ export function isJobEligible(
 
   if (publishedAt) {
     const jobPublishedAt = DateTime.fromJSDate(publishedAt, { zone: JOB_TIMEZONE });
-    const publishedCutoff = current.minus({ months: 6 });
+    const publishedCutoff = current.minus({ months: 1 });
     if (jobPublishedAt < publishedCutoff) {
-      return { isEligible: false, reason: 'Published more than 6 months ago' };
+      return { isEligible: false, reason: 'Published more than 1 month ago' };
     }
   }
 

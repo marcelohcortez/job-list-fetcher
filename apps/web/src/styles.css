@@ -284,6 +284,11 @@ h1 {
   animation: toast-in 0.2s ease-out;
 }
 
+.toast-success {
+  background: var(--success);
+  border-color: var(--success);
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;
@@ -414,6 +419,7 @@ main {
 .links {
   display: flex;
   gap: 16px;
+  margin-top: 12px;
 }
 
 .links a,
@@ -538,6 +544,17 @@ main {
   display: none;
 }
 
+.sent-cvs-search {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
 .sent-cvs-options {
   display: flex;
   flex-direction: column;
@@ -555,6 +572,23 @@ main {
   align-items: center;
   gap: 8px;
   cursor: pointer;
+}
+
+.sent-cvs-save {
+  margin-top: 8px;
+  padding: 6px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.sent-cvs-save:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* legacy top-tabs kept in case referenced elsewhere */
