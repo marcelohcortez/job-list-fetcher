@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/index.ts",
     "backfill:skills": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/backfill-skills.ts",
+    "backfill:role-categories": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/backfill-role-categories.ts",
     "backfill:cvs": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/backfill-cvs.ts",
     "backfill:cinode-descriptions": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/backfill-cinode-descriptions.ts",
     "backfill:laya": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/backfill-laya.ts",
