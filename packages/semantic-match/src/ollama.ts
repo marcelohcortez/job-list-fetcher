@@ -214,12 +214,37 @@ export function createOllamaSanitizer(config: OllamaConfig): SanitizerClient {
     return JSON.parse(response.message.content);
   }
 
+  // Capped for the same reason as EXTRACT_SKILLS_MAX_TOKENS below: with
+  // config.numPredict at its usual -1 (unbounded), grammar-constrained JSON
+  // decoding against this schema occasionally stalled for 20+ minutes on
+  // real hardware for specific documents, then failed anyway once the
+  // 20-minute fetch timeout in createOllamaFetch was hit - capping it turns
+  // an indefinite hang into a fast, cheap-to-retry failure. 4096 (raised
+  // from an initial 2048, see the 2026-09-26/27 Devies-resume ingestion) is
+  // sized for a long CV's genuinely large output, e.g. one candidate with
+  // 19 competence entries needed ~3.5K tokens - 2048 truncated that one
+  // mid-string every time even though nothing was actually stuck.
+  //
+  // Separately, and NOT fixed by this cap: two of 39 real CVs ingested that
+  // day (2026-09-26/27) deterministically produced invalid JSON (an
+  // "Unterminated string" parse error at the exact same byte offset on
+  // every retry, budget size irrelevant) with source text containing no
+  // quotes or backslashes to blame - almost certainly the model emitting a
+  // raw, unescaped newline inside a long free-text field (coreResponsibilities/
+  // experienceProfile) instead of "\n". A real fix needs either a
+  // JSON-repair fallback in chatJson (e.g. retry once with a "reply with
+  // valid JSON, escape all newlines" nudge, or a permissive re-parse) or a
+  // stricter prompt instruction against literal newlines in string values -
+  // out of scope for this cap, which only bounds worst-case latency.
+  const SANITIZE_MAX_TOKENS = 4096;
+
   return {
     async sanitizeJob(rawText) {
       const parsed = await chatJson(
         JOB_SYSTEM_PROMPT,
         `Extract the target schema from this job advertisement:\n\n${rawText}`,
         PROFILE_JSON_SCHEMA,
+        SANITIZE_MAX_TOKENS,
       );
       return SanitizedJobSchema.parse(parsed);
     },
@@ -229,6 +254,7 @@ export function createOllamaSanitizer(config: OllamaConfig): SanitizerClient {
         CANDIDATE_SYSTEM_PROMPT,
         `Extract the target schema from this CV:\n\n${rawText}`,
         CANDIDATE_JSON_SCHEMA,
+        SANITIZE_MAX_TOKENS,
       );
       return SanitizedCandidateSchema.parse(parsed);
     },
