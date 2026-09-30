@@ -70,7 +70,6 @@ export const DEFAULT_GREENHOUSE_BOARDS: readonly BoardConfig[] = [
   { slug: 'airbnb', name: 'Airbnb' },
   { slug: 'figma', name: 'Figma' },
   { slug: 'vercel', name: 'Vercel' },
-  { slug: 'postman', name: 'Postman' },
   { slug: 'discord', name: 'Discord' },
   { slug: 'webflow', name: 'Webflow' },
   { slug: 'netlify', name: 'Netlify' },
