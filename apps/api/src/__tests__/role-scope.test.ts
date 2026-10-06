@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createKysely, openSqlite, runMigrations, listTargetRolePhrases } from '@job-fetcher/database';
+import {
+  createKysely,
+  openSqlite,
+  runMigrations,
+  listTargetRolePhrases,
+} from '@job-fetcher/database';
 import type { JobDb } from '@job-fetcher/database';
 import type { Kysely } from 'kysely';
 import type { VectorStore } from '@job-fetcher/semantic-match';
@@ -8,9 +13,7 @@ import { seedTargetRolePhrases, createTitleScopeChecker } from '../role-scope';
 let sqlite: ReturnType<typeof openSqlite>;
 let db: Kysely<JobDb>;
 
-function fakeVectorStore(
-  overrides: Partial<VectorStore> = {},
-): VectorStore {
+function fakeVectorStore(overrides: Partial<VectorStore> = {}): VectorStore {
   return {
     upsertJob: vi.fn(),
     deleteJob: vi.fn(),

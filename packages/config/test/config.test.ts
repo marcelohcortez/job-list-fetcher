@@ -49,9 +49,7 @@ describe('env schema', () => {
 
   it('enables the public Cinode Market source unless switched off', () => {
     expect(loadEnv({}).CINODE_MARKET_ENABLED).toBe(true);
-    expect(
-      loadEnv({ CINODE_MARKET_ENABLED: 'false' }).CINODE_MARKET_ENABLED,
-    ).toBe(false);
+    expect(loadEnv({ CINODE_MARKET_ENABLED: 'false' }).CINODE_MARKET_ENABLED).toBe(false);
   });
 
   it('treats blank values as unset so optional keys stay optional', () => {

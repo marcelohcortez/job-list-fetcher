@@ -43,15 +43,8 @@ export async function findSkillByNormalizedLabel(
   return row ?? null;
 }
 
-export async function skillExists(
-  db: Kysely<JobDb>,
-  id: string,
-): Promise<boolean> {
-  const row = await db
-    .selectFrom('skills')
-    .select('id')
-    .where('id', '=', id)
-    .executeTakeFirst();
+export async function skillExists(db: Kysely<JobDb>, id: string): Promise<boolean> {
+  const row = await db.selectFrom('skills').select('id').where('id', '=', id).executeTakeFirst();
   return row != null;
 }
 
@@ -61,10 +54,7 @@ export async function replaceJobRequiredSkills(
   jobOpeningId: string,
   skillIds: string[],
 ): Promise<void> {
-  await db
-    .deleteFrom('job_required_skills')
-    .where('job_opening_id', '=', jobOpeningId)
-    .execute();
+  await db.deleteFrom('job_required_skills').where('job_opening_id', '=', jobOpeningId).execute();
   if (skillIds.length === 0) return;
   await db
     .insertInto('job_required_skills')
@@ -78,10 +68,7 @@ export async function replaceCandidateSkills(
   candidateId: string,
   skillIds: string[],
 ): Promise<void> {
-  await db
-    .deleteFrom('candidate_skills')
-    .where('candidate_id', '=', candidateId)
-    .execute();
+  await db.deleteFrom('candidate_skills').where('candidate_id', '=', candidateId).execute();
   if (skillIds.length === 0) return;
   await db
     .insertInto('candidate_skills')

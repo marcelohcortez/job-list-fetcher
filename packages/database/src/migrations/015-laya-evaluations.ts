@@ -22,7 +22,9 @@ export const layaEvaluationsMigration: Migration = {
       )
     `.execute(db);
 
-    await sql`CREATE INDEX idx_laya_evaluations_candidate ON laya_evaluations(candidate_id)`.execute(db);
+    await sql`CREATE INDEX idx_laya_evaluations_candidate ON laya_evaluations(candidate_id)`.execute(
+      db,
+    );
   },
 
   async down(db: Kysely<JobDb>) {

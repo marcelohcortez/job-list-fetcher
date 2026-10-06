@@ -48,7 +48,9 @@ const DELAY_MS = 250;
 async function main() {
   const dir = process.argv[2];
   if (!dir) {
-    console.error('Usage: ingest-devies-resumes.ts <directory containing manifest.json + .txt files>');
+    console.error(
+      'Usage: ingest-devies-resumes.ts <directory containing manifest.json + .txt files>',
+    );
     process.exit(1);
   }
 
@@ -114,7 +116,9 @@ async function main() {
         seniorityLevel: categorizeSeniority(sanitized.title, sanitized.experienceProfile),
       });
       ok += 1;
-      console.log(`[${index + 1}/${manifest.length}] ok: ${entry.name} -> candidate ${inserted.id}`);
+      console.log(
+        `[${index + 1}/${manifest.length}] ok: ${entry.name} -> candidate ${inserted.id}`,
+      );
     } catch (err) {
       failed += 1;
       const message = (err as Error).message;

@@ -128,10 +128,7 @@ export async function markCandidateDuplicate(
     .execute();
 }
 
-export async function resolveCandidateDuplicate(
-  db: Kysely<JobDb>,
-  id: string,
-): Promise<void> {
+export async function resolveCandidateDuplicate(db: Kysely<JobDb>, id: string): Promise<void> {
   await db
     .updateTable('candidates')
     .set({
@@ -147,11 +144,7 @@ export async function getCandidate(
   db: Kysely<JobDb>,
   id: string,
 ): Promise<CandidateTable | undefined> {
-  return db
-    .selectFrom('candidates')
-    .selectAll()
-    .where('id', '=', id)
-    .executeTakeFirst();
+  return db.selectFrom('candidates').selectAll().where('id', '=', id).executeTakeFirst();
 }
 
 /**
@@ -178,24 +171,12 @@ export async function findSanitizedCandidateByNameAndTitle(
     .executeTakeFirst();
 }
 
-export async function listCandidates(
-  db: Kysely<JobDb>,
-): Promise<CandidateTable[]> {
-  return db
-    .selectFrom('candidates')
-    .selectAll()
-    .orderBy('created_at', 'desc')
-    .execute();
+export async function listCandidates(db: Kysely<JobDb>): Promise<CandidateTable[]> {
+  return db.selectFrom('candidates').selectAll().orderBy('created_at', 'desc').execute();
 }
 
-export async function deleteCandidate(
-  db: Kysely<JobDb>,
-  id: string,
-): Promise<boolean> {
-  const result = await db
-    .deleteFrom('candidates')
-    .where('id', '=', id)
-    .execute();
+export async function deleteCandidate(db: Kysely<JobDb>, id: string): Promise<boolean> {
+  const result = await db.deleteFrom('candidates').where('id', '=', id).execute();
   return result.length > 0;
 }
 

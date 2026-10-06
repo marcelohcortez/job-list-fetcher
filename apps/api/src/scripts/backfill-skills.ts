@@ -31,7 +31,11 @@ import { createSkillCanonicalizer } from '../skill-taxonomy';
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const DELAY_MS = 250;
 
-function buildRawText(job: { title: string; company_name: string | null; description: string | null }): string {
+function buildRawText(job: {
+  title: string;
+  company_name: string | null;
+  description: string | null;
+}): string {
   return [job.title, job.company_name, job.description]
     .filter((part): part is string => Boolean(part))
     .join('\n\n');

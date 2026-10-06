@@ -1,13 +1,6 @@
 import type { JobStatus, SourceRecord } from '@job-fetcher/domain';
 import { SourceRecordSchema } from '@job-fetcher/domain';
-import {
-  asRecord,
-  extractItems,
-  pick,
-  pickDate,
-  pickString,
-  type AdapterOptions,
-} from './base';
+import { asRecord, extractItems, pick, pickDate, pickString, type AdapterOptions } from './base';
 import { stripHtml } from './boards';
 
 export interface TheirStackAdapterOptions extends AdapterOptions {
@@ -25,10 +18,7 @@ export class TheirStackAdapter {
   private readonly apiKey: string;
   private readonly locationQuery: string;
   private readonly rateLimitMs: number;
-  private readonly fetcher: (
-    url: string,
-    init?: RequestInit,
-  ) => Promise<Response>;
+  private readonly fetcher: (url: string, init?: RequestInit) => Promise<Response>;
 
   constructor(apiKey: string, options: TheirStackAdapterOptions = {}) {
     this.apiKey = apiKey;
@@ -51,10 +41,9 @@ export class TheirStackAdapter {
       per_page: '50',
       page_number: '1',
     });
-    const response = await this.fetcher(
-      `${this.baseUrl}/v1/job-search?${params.toString()}`,
-      { headers: { Authorization: `Bearer ${this.apiKey}` } },
-    );
+    const response = await this.fetcher(`${this.baseUrl}/v1/job-search?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${this.apiKey}` },
+    });
     if (!response.ok) {
       throw new Error(`TheirStack request failed (${response.status})`);
     }
@@ -77,8 +66,7 @@ export class TheirStackAdapter {
             ? stripHtml(pickString(job, 'description', 'job_description'))
             : null,
         url: pickString(job, 'url', 'apply_url'),
-        applicationUrl:
-          pick(job, 'apply_url') != null ? pickString(job, 'apply_url') : null,
+        applicationUrl: pick(job, 'apply_url') != null ? pickString(job, 'apply_url') : null,
         deadline: pickDate(job, 'deadline', 'deadline_at'),
         status: this.mapStatus(pick(job, 'status', 'state')),
         rawPayload: asRecord(job),
@@ -87,8 +75,7 @@ export class TheirStackAdapter {
       };
       const parsed = SourceRecordSchema.safeParse(candidate);
       if (parsed.success) records.push(parsed.data as SourceRecord);
-      else
-        throw new Error(`Invalid TheirStack record: ${parsed.error.message}`);
+      else throw new Error(`Invalid TheirStack record: ${parsed.error.message}`);
     }
     return records;
   }

@@ -50,10 +50,7 @@ export class TeamtailorAdapter {
   readonly name = 'teamtailor';
   private readonly explicitBoards?: TeamtailorBoard[];
   private readonly rateLimitMs: number;
-  private readonly fetcher: (
-    url: string,
-    init?: RequestInit,
-  ) => Promise<Response>;
+  private readonly fetcher: (url: string, init?: RequestInit) => Promise<Response>;
 
   constructor(options: TeamtailorAdapterOptions = {}) {
     this.explicitBoards = options.boards ? [...options.boards] : undefined;
@@ -96,15 +93,11 @@ export class TeamtailorAdapter {
     return records;
   }
 
-  private toSourceRecord(
-    item: Record<string, unknown>,
-    board: TeamtailorBoard,
-  ): SourceRecord {
+  private toSourceRecord(item: Record<string, unknown>, board: TeamtailorBoard): SourceRecord {
     const posting = asRecord(item._jobposting);
     const id = item.id != null ? String(item.id) : null;
     const url = typeof item.url === 'string' ? item.url : '';
-    const contentHtml =
-      typeof item.content_html === 'string' ? item.content_html : '';
+    const contentHtml = typeof item.content_html === 'string' ? item.content_html : '';
     const validThrough =
       typeof posting.validThrough === 'string' ? new Date(posting.validThrough) : null;
     const datePublished =
@@ -116,10 +109,7 @@ export class TeamtailorAdapter {
       sourceName: board.name,
       sourceJobId: id,
       title: typeof item.title === 'string' ? item.title : '',
-      company:
-        typeof hiringOrganization.name === 'string'
-          ? hiringOrganization.name
-          : board.name,
+      company: typeof hiringOrganization.name === 'string' ? hiringOrganization.name : board.name,
       location: this.resolveLocation(posting),
       description: contentHtml ? stripHtml(contentHtml) : null,
       url,
@@ -137,8 +127,9 @@ export class TeamtailorAdapter {
     const places = Array.isArray(posting.jobLocation) ? posting.jobLocation : [];
     const place = asRecord(places[0]);
     const address = asRecord(place.address);
-    const parts = [address.addressLocality, address.addressRegion, address.addressCountry]
-      .filter((part): part is string => typeof part === 'string' && part.trim() !== '');
+    const parts = [address.addressLocality, address.addressRegion, address.addressCountry].filter(
+      (part): part is string => typeof part === 'string' && part.trim() !== '',
+    );
     return parts.join(', ');
   }
 }

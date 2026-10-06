@@ -38,7 +38,10 @@ export function createApp(
   app.route('/api/ingestion', ingestionRoutes(db, adapters, embedJob, isTitleInScope));
   app.route('/api/candidates', candidatesRoutes(db, semantic, canonicalizeSkills, laya));
   app.route('/api/matches', matchesRoutes(db, semantic, matchesConfig));
-  app.route('/api/config', configRoutes(db, { vectorStore: semantic.vectorStore, embed: semantic.sanitizer.embed }));
+  app.route(
+    '/api/config',
+    configRoutes(db, { vectorStore: semantic.vectorStore, embed: semantic.sanitizer.embed }),
+  );
 
   return app;
 }

@@ -25,8 +25,12 @@ describe('categorizeRoleTitle', () => {
   it('classifies product operations and solution/AI analyst titles', () => {
     expect(categorizeRoleTitle('AI Product Operations Lead')).toBe('product-management');
     expect(categorizeRoleTitle('AI Solution Analyst')).toBe('business-analysis');
-    expect(categorizeRoleTitle('Generative AI Analyst | Russian (Kazakhstan)')).toBe('business-analysis');
-    expect(areRoleCategoriesCompatible('design', categorizeRoleTitle('AI Solution Analyst'))).toBe(false);
+    expect(categorizeRoleTitle('Generative AI Analyst | Russian (Kazakhstan)')).toBe(
+      'business-analysis',
+    );
+    expect(areRoleCategoriesCompatible('design', categorizeRoleTitle('AI Solution Analyst'))).toBe(
+      false,
+    );
   });
 
   it('classifies design titles', () => {
@@ -47,7 +51,9 @@ describe('categorizeRoleTitle', () => {
 
   it('classifies embedded/native-mobile titles into their own isolated categories', () => {
     expect(categorizeRoleTitle('Embedded Software Engineer')).toBe('embedded-systems');
-    expect(categorizeRoleTitle('Senior C++ Developer Embedded Automotive')).toBe('embedded-systems');
+    expect(categorizeRoleTitle('Senior C++ Developer Embedded Automotive')).toBe(
+      'embedded-systems',
+    );
     expect(categorizeRoleTitle('Android Developer')).toBe('mobile-native');
     expect(categorizeRoleTitle('iOS Engineer')).toBe('mobile-native');
     // Ambiguous titles (no unambiguous native-stack keyword) stay in the

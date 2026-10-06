@@ -35,7 +35,10 @@ function normalize(value: string): string {
  * override (reordering included).
  */
 export const DEFAULT_TITLE_LEVEL_PATTERN_SOURCES: readonly (readonly [SeniorityLevel, string])[] = [
-  ['lead-principal', '\\b(principal|staff|distinguished|chief|head of|\\blead\\b|tech lead|techlead)\\b'],
+  [
+    'lead-principal',
+    '\\b(principal|staff|distinguished|chief|head of|\\blead\\b|tech lead|techlead)\\b',
+  ],
   ['senior', '\\b(senior|\\bsr\\b)\\b'],
   ['junior', '\\b(junior|\\bjr\\b|graduate|trainee|intern|entry level)\\b'],
   ['mid', '\\b(mid level|mid senior|intermediate|associate)\\b'],

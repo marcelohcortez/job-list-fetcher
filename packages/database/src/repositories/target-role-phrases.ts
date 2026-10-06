@@ -9,9 +9,7 @@ export interface NewTargetRolePhrase {
   createdAt: string;
 }
 
-export async function listTargetRolePhrases(
-  db: Kysely<JobDb>,
-): Promise<TargetRolePhraseTable[]> {
+export async function listTargetRolePhrases(db: Kysely<JobDb>): Promise<TargetRolePhraseTable[]> {
   return db.selectFrom('target_role_phrases').selectAll().execute();
 }
 

@@ -33,14 +33,7 @@ import { ConfigTab } from './ConfigTab';
 import { MARK_TOAST_MESSAGE, SuccessToast, useSuccessToast } from './components/Toast';
 
 type Tab =
-  | 'jobs'
-  | 'applied'
-  | 'saved'
-  | 'history'
-  | 'upload-cv'
-  | 'upload-cvs'
-  | 'matches'
-  | 'config';
+  'jobs' | 'applied' | 'saved' | 'history' | 'upload-cv' | 'upload-cvs' | 'matches' | 'config';
 
 interface Summary {
   counts: IngestionRun['counts'];
@@ -183,27 +176,19 @@ function JobsTab({
             key={ALL_SOURCES}
             role="tab"
             aria-selected={activeSource === ALL_SOURCES}
-            className={
-              activeSource === ALL_SOURCES
-                ? 'source-tab active'
-                : 'source-tab'
-            }
+            className={activeSource === ALL_SOURCES ? 'source-tab active' : 'source-tab'}
             onClick={() => setActiveSource(ALL_SOURCES)}
           >
             All ({activeJobs.length})
           </button>
           {sources.map((source) => {
-            const count = activeJobs.filter(
-              (job) => job.sourceName === source,
-            ).length;
+            const count = activeJobs.filter((job) => job.sourceName === source).length;
             return (
               <button
                 key={source}
                 role="tab"
                 aria-selected={activeSource === source}
-                className={
-                  activeSource === source ? 'source-tab active' : 'source-tab'
-                }
+                className={activeSource === source ? 'source-tab active' : 'source-tab'}
                 onClick={() => setActiveSource(source)}
               >
                 {source} ({count})
@@ -223,8 +208,7 @@ function JobsTab({
         <p className="muted">Loading jobs...</p>
       ) : visibleJobs.length === 0 ? (
         <p className="muted">
-          No jobs found. Click &quot;Refresh jobs&quot; to fetch the latest
-          listings.
+          No jobs found. Click &quot;Refresh jobs&quot; to fetch the latest listings.
         </p>
       ) : (
         <ul className="jobs">
@@ -305,8 +289,7 @@ function AppliedTab({
         <p className="muted">Loading jobs...</p>
       ) : appliedJobs.length === 0 ? (
         <p className="muted">
-          No applications yet. Mark a job as &quot;Applied&quot; from the
-          Openings tab.
+          No applications yet. Mark a job as &quot;Applied&quot; from the Openings tab.
         </p>
       ) : (
         <ul className="jobs">
@@ -387,8 +370,8 @@ function SavedTab({
         <p className="muted">Loading jobs...</p>
       ) : savedJobs.length === 0 ? (
         <p className="muted">
-          No saved openings yet. Click &quot;Save&quot; on an Opening from the
-          Openings or Matches tab.
+          No saved openings yet. Click &quot;Save&quot; on an Opening from the Openings or Matches
+          tab.
         </p>
       ) : (
         <ul className="jobs">
@@ -438,21 +421,16 @@ function HistoryTab({
   topMatchesByJobId: Record<string, string[]>;
 }) {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'seen' | 'dead'>(
-    'all',
-  );
+  const [statusFilter, setStatusFilter] = useState<'all' | 'seen' | 'dead'>('all');
   const threeMonthsAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
   const historyJobs = jobs
     .filter(
       (job) =>
-        job.userMark === 'dead' ||
-        (job.seenAt && new Date(job.seenAt).getTime() >= threeMonthsAgo),
+        job.userMark === 'dead' || (job.seenAt && new Date(job.seenAt).getTime() >= threeMonthsAgo),
     )
     .filter((job) => matchesJobSearch(job, search, candidates));
 
-  const seenCount = historyJobs.filter(
-    (job) => job.userMark !== 'dead' && job.seenAt,
-  ).length;
+  const seenCount = historyJobs.filter((job) => job.userMark !== 'dead' && job.seenAt).length;
   const deadCount = historyJobs.filter((job) => job.userMark === 'dead').length;
 
   const filteredHistoryJobs = sortByPublishedDesc(
@@ -483,9 +461,7 @@ function HistoryTab({
         <button
           role="tab"
           aria-selected={statusFilter === 'all'}
-          className={
-            statusFilter === 'all' ? 'source-tab active' : 'source-tab'
-          }
+          className={statusFilter === 'all' ? 'source-tab active' : 'source-tab'}
           onClick={() => setStatusFilter('all')}
         >
           All ({historyJobs.length})
@@ -493,9 +469,7 @@ function HistoryTab({
         <button
           role="tab"
           aria-selected={statusFilter === 'seen'}
-          className={
-            statusFilter === 'seen' ? 'source-tab active' : 'source-tab'
-          }
+          className={statusFilter === 'seen' ? 'source-tab active' : 'source-tab'}
           onClick={() => setStatusFilter('seen')}
         >
           Seen ({seenCount})
@@ -503,9 +477,7 @@ function HistoryTab({
         <button
           role="tab"
           aria-selected={statusFilter === 'dead'}
-          className={
-            statusFilter === 'dead' ? 'source-tab active' : 'source-tab'
-          }
+          className={statusFilter === 'dead' ? 'source-tab active' : 'source-tab'}
           onClick={() => setStatusFilter('dead')}
         >
           Dead ({deadCount})
@@ -550,8 +522,7 @@ function HistoryTab({
 
 export default function App() {
   const location = useLocation();
-  const currentTab =
-    NAV_ITEMS.find((item) => location.pathname === item.path)?.id ?? 'jobs';
+  const currentTab = NAV_ITEMS.find((item) => location.pathname === item.path)?.id ?? 'jobs';
 
   const [jobs, setJobs] = useState<JobOpening[]>([]);
   const [knownSources, setKnownSources] = useState<string[]>([]);
@@ -564,9 +535,7 @@ export default function App() {
   const { toast, showToast } = useSuccessToast();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [pendingSentCvs, setPendingSentCvs] = useState<Record<string, boolean>>({});
-  const [topMatchesByJobId, setTopMatchesByJobId] = useState<
-    Record<string, string[]>
-  >({});
+  const [topMatchesByJobId, setTopMatchesByJobId] = useState<Record<string, string[]>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -651,20 +620,14 @@ export default function App() {
     const next = current === mark ? null : mark;
 
     setPendingMarks((prev) => ({ ...prev, [job.id]: true }));
-    setJobs((prev) =>
-      prev.map((j) => (j.id === job.id ? { ...j, userMark: next } : j)),
-    );
+    setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, userMark: next } : j)));
     try {
       const saved = await setJobMark(job.id, next);
-      setJobs((prev) =>
-        prev.map((j) => (j.id === job.id ? { ...j, userMark: saved } : j)),
-      );
+      setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, userMark: saved } : j)));
       if (saved) showToast(MARK_TOAST_MESSAGE[saved]);
     } catch (err) {
       setError((err as Error).message);
-      setJobs((prev) =>
-        prev.map((j) => (j.id === job.id ? { ...j, userMark: current } : j)),
-      );
+      setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, userMark: current } : j)));
     } finally {
       setPendingMarks((prev) => {
         const { [job.id]: _removed, ...rest } = prev;
@@ -679,20 +642,14 @@ export default function App() {
     const next = current ? null : new Date().toISOString();
 
     setPendingSeen((prev) => ({ ...prev, [job.id]: true }));
-    setJobs((prev) =>
-      prev.map((j) => (j.id === job.id ? { ...j, seenAt: next } : j)),
-    );
+    setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, seenAt: next } : j)));
     try {
       const saved = await setJobSeen(job.id, !current);
-      setJobs((prev) =>
-        prev.map((j) => (j.id === job.id ? { ...j, seenAt: saved } : j)),
-      );
+      setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, seenAt: saved } : j)));
       if (saved) showToast('marked as seen');
     } catch (err) {
       setError((err as Error).message);
-      setJobs((prev) =>
-        prev.map((j) => (j.id === job.id ? { ...j, seenAt: current } : j)),
-      );
+      setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, seenAt: current } : j)));
     } finally {
       setPendingSeen((prev) => {
         const { [job.id]: _removed, ...rest } = prev;
@@ -702,16 +659,15 @@ export default function App() {
   };
 
   const handleMatchesMarkChange = (jobId: string, mark: JobMark | null) => {
-    setJobs((prev) =>
-      prev.map((j) => (j.id === jobId ? { ...j, userMark: mark } : j)),
-    );
+    setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, userMark: mark } : j)));
   };
 
   const handleChangeSentCvs = async (job: JobOpening, candidateIds: string[]) => {
     if (pendingSentCvs[job.id]) return;
     const current = job.sentCvIds;
     const currentMark = job.userMark;
-    const shouldMarkApplied = current.length === 0 && candidateIds.length > 0 && currentMark !== 'applied';
+    const shouldMarkApplied =
+      current.length === 0 && candidateIds.length > 0 && currentMark !== 'applied';
 
     setPendingSentCvs((prev) => ({ ...prev, [job.id]: true }));
     setJobs((prev) =>
@@ -723,14 +679,10 @@ export default function App() {
     );
     try {
       const saved = await setJobSentCvs(job.id, candidateIds);
-      setJobs((prev) =>
-        prev.map((j) => (j.id === job.id ? { ...j, sentCvIds: saved } : j)),
-      );
+      setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, sentCvIds: saved } : j)));
       if (shouldMarkApplied) {
         const savedMark = await setJobMark(job.id, 'applied');
-        setJobs((prev) =>
-          prev.map((j) => (j.id === job.id ? { ...j, userMark: savedMark } : j)),
-        );
+        setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, userMark: savedMark } : j)));
       }
     } catch (err) {
       setError((err as Error).message);
@@ -760,9 +712,7 @@ export default function App() {
             <Link
               key={item.id}
               to={item.path}
-              className={
-                currentTab === item.id ? 'sidenav-item active' : 'sidenav-item'
-              }
+              className={currentTab === item.id ? 'sidenav-item active' : 'sidenav-item'}
             >
               <item.Icon className="sidenav-icon" fontSize="small" aria-hidden="true" />
               {item.label}
@@ -788,10 +738,9 @@ export default function App() {
 
         {summary && (
           <p className="summary">
-            Last refresh: {summary.ranAt.toLocaleTimeString()} — fetched{' '}
-            {summary.counts.fetched}, accepted {summary.counts.accepted}, new{' '}
-            {summary.counts.created}, updated {summary.counts.updated}, already
-            known {summary.counts.deduplicated}
+            Last refresh: {summary.ranAt.toLocaleTimeString()} — fetched {summary.counts.fetched},
+            accepted {summary.counts.accepted}, new {summary.counts.created}, updated{' '}
+            {summary.counts.updated}, already known {summary.counts.deduplicated}
           </p>
         )}
 

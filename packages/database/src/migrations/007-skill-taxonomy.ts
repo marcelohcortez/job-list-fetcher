@@ -37,7 +37,9 @@ export const skillTaxonomyMigration: Migration = {
       )
     `.execute(db);
 
-    await sql`CREATE INDEX idx_job_required_skills_skill ON job_required_skills(skill_id)`.execute(db);
+    await sql`CREATE INDEX idx_job_required_skills_skill ON job_required_skills(skill_id)`.execute(
+      db,
+    );
     await sql`CREATE INDEX idx_candidate_skills_skill ON candidate_skills(skill_id)`.execute(db);
   },
 

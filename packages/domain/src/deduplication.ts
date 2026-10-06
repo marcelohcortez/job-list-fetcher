@@ -16,9 +16,7 @@ const sanitize = (value: string): string =>
     .trim()
     .replace(/\s+/g, '-');
 
-export function exactKey(
-  record: Pick<SourceRecord, 'sourceName' | 'sourceJobId'>,
-): string {
+export function exactKey(record: Pick<SourceRecord, 'sourceName' | 'sourceJobId'>): string {
   return `${record.sourceName}:${record.sourceJobId}`;
 }
 
@@ -36,15 +34,8 @@ export function calculateCanonicalKey(
   return `${title}:${company}:${location}`;
 }
 
-export function deduplicateSourceRecords(
-  a: SourceRecord,
-  b: SourceRecord,
-): MatchResult {
-  if (
-    a.sourceName === b.sourceName &&
-    a.sourceJobId !== null &&
-    a.sourceJobId === b.sourceJobId
-  ) {
+export function deduplicateSourceRecords(a: SourceRecord, b: SourceRecord): MatchResult {
+  if (a.sourceName === b.sourceName && a.sourceJobId !== null && a.sourceJobId === b.sourceJobId) {
     return { isDuplicate: true, confidence: 'exact', matchedKey: exactKey(a) };
   }
 

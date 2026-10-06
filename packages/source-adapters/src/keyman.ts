@@ -22,10 +22,7 @@ export class KeymanAdapter {
   private readonly baseUrl: string;
   private readonly categoryId: number;
   private readonly rateLimitMs: number;
-  private readonly fetcher: (
-    url: string,
-    init?: RequestInit,
-  ) => Promise<Response>;
+  private readonly fetcher: (url: string, init?: RequestInit) => Promise<Response>;
 
   constructor(options: KeymanAdapterOptions = {}) {
     this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;

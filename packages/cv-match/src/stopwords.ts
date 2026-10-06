@@ -285,8 +285,4 @@ const DOMAIN_NOISE = [
   'parttime',
 ];
 
-export const STOPWORDS: ReadonlySet<string> = new Set([
-  ...COMMON,
-  ...SWEDISH,
-  ...DOMAIN_NOISE,
-]);
+export const STOPWORDS: ReadonlySet<string> = new Set([...COMMON, ...SWEDISH, ...DOMAIN_NOISE]);

@@ -1,12 +1,6 @@
 import type { SourceRecord } from '@job-fetcher/domain';
 import { SourceRecordSchema } from '@job-fetcher/domain';
-import {
-  asRecord,
-  pick,
-  pickDate,
-  pickString,
-  type AdapterOptions,
-} from './base';
+import { asRecord, pick, pickDate, pickString, type AdapterOptions } from './base';
 import {
   DEFAULT_LEVER_BOARDS,
   getLeverBoards,
@@ -30,10 +24,7 @@ export class LeverAdapter {
   private readonly euBaseUrl: string;
   private readonly explicitBoards?: BoardConfig[];
   private readonly rateLimitMs: number;
-  private readonly fetcher: (
-    url: string,
-    init?: RequestInit,
-  ) => Promise<Response>;
+  private readonly fetcher: (url: string, init?: RequestInit) => Promise<Response>;
 
   constructor(options: LeverAdapterOptions = {}) {
     this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
@@ -56,8 +47,7 @@ export class LeverAdapter {
 
   private async fetchBoard(board: BoardConfig): Promise<SourceRecord[]> {
     await new Promise((resolve) => setTimeout(resolve, this.rateLimitMs));
-    const bases =
-      board.host === 'eu' ? [this.euBaseUrl] : [this.baseUrl, this.euBaseUrl];
+    const bases = board.host === 'eu' ? [this.euBaseUrl] : [this.baseUrl, this.euBaseUrl];
 
     let lastStatus = 0;
     for (const base of bases) {
@@ -82,10 +72,7 @@ export class LeverAdapter {
     throw new Error(`Lever board ${board.slug} request failed (${lastStatus})`);
   }
 
-  private toSourceRecord(
-    posting: Record<string, unknown>,
-    board: BoardConfig,
-  ): SourceRecord {
+  private toSourceRecord(posting: Record<string, unknown>, board: BoardConfig): SourceRecord {
     const id = pick(posting, 'id');
     const url = pickString(posting, 'hostedUrl');
     const applyUrl = pickString(posting, 'applyUrl');
@@ -152,10 +139,7 @@ export class LeverAdapter {
         const list = asRecord(entry);
         const heading = pickString(list, 'text').trim();
         const content = pick(list, 'content');
-        const body =
-          typeof content === 'string' && content.trim() !== ''
-            ? stripHtml(content)
-            : '';
+        const body = typeof content === 'string' && content.trim() !== '' ? stripHtml(content) : '';
         if (!body) continue;
         parts.push(heading ? `${heading}\n${body}` : body);
       }

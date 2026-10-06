@@ -1,9 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { TheirStackAdapter } from '../src/theirstack';
-import {
-  JobTechDevAdapter,
-  JOBTECH_DEFAULT_MUNICIPALITY_CODE,
-} from '../src/jobtech';
+import { JobTechDevAdapter, JOBTECH_DEFAULT_MUNICIPALITY_CODE } from '../src/jobtech';
 import { GreenhouseAdapter } from '../src/greenhouse';
 import { LeverAdapter } from '../src/lever';
 import { TeamtailorAdapter } from '../src/teamtailor';
@@ -88,9 +85,7 @@ describe('JobTechDevAdapter', () => {
     await adapter.fetchJobs();
     expect(urls).toHaveLength(2);
     expect(urls[0]).toContain('jobtechdev.se');
-    expect(urls[0]).toContain(
-      `municipality=${JOBTECH_DEFAULT_MUNICIPALITY_CODE}`,
-    );
+    expect(urls[0]).toContain(`municipality=${JOBTECH_DEFAULT_MUNICIPALITY_CODE}`);
   });
 
   it('maps JobTech hits to SourceRecords', async () => {
@@ -219,10 +214,8 @@ describe('GreenhouseAdapter', () => {
 const leverPosting = {
   id: '1e8c984e-fa8e-4dbb-8f74-6f608ae3bfa1',
   text: 'Senior Software Engineer - TV Playback',
-  hostedUrl:
-    'https://jobs.lever.co/spotify/1e8c984e-fa8e-4dbb-8f74-6f608ae3bfa1',
-  applyUrl:
-    'https://jobs.lever.co/spotify/1e8c984e-fa8e-4dbb-8f74-6f608ae3bfa1/apply',
+  hostedUrl: 'https://jobs.lever.co/spotify/1e8c984e-fa8e-4dbb-8f74-6f608ae3bfa1',
+  applyUrl: 'https://jobs.lever.co/spotify/1e8c984e-fa8e-4dbb-8f74-6f608ae3bfa1/apply',
   categories: { location: 'Stockholm, Sweden', commitment: 'Full-time' },
   workplaceType: 'hybrid',
   createdAt: 1730000000000,
@@ -299,8 +292,7 @@ describe('LeverAdapter', () => {
       company: 'Spotify',
       location: 'Remote - EMEA',
       url: 'https://jobs.lever.co/spotify/1e8c984e-fa8e-4dbb-8f74-6f608ae3bfa1',
-      applicationUrl:
-        'https://jobs.lever.co/spotify/1e8c984e-fa8e-4dbb-8f74-6f608ae3bfa1/apply',
+      applicationUrl: 'https://jobs.lever.co/spotify/1e8c984e-fa8e-4dbb-8f74-6f608ae3bfa1/apply',
       status: 'active',
     });
     expect(records[0].description).toBe('Join the band.');
@@ -498,8 +490,6 @@ describe('KeymanAdapter', () => {
 
   it('throws on failed requests', async () => {
     const fetcher = vi.fn(async () => new Response('', { status: 500 }));
-    await expect(
-      new KeymanAdapter({ rateLimitMs: 0, fetcher }).fetchJobs(),
-    ).rejects.toThrow(/500/);
+    await expect(new KeymanAdapter({ rateLimitMs: 0, fetcher }).fetchJobs()).rejects.toThrow(/500/);
   });
 });

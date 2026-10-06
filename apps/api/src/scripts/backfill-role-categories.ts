@@ -55,7 +55,9 @@ async function main() {
       .where('job_opening_id', '=', job.job_opening_id)
       .execute();
     jobsChanged += 1;
-    console.log(`job  ${job.job_opening_id}: ${job.role_category ?? 'null'} -> ${next ?? 'null'}  (${title})`);
+    console.log(
+      `job  ${job.job_opening_id}: ${job.role_category ?? 'null'} -> ${next ?? 'null'}  (${title})`,
+    );
   }
 
   const candidates = await db
@@ -76,10 +78,14 @@ async function main() {
       .where('id', '=', candidate.id)
       .execute();
     candidatesChanged += 1;
-    console.log(`candidate ${candidate.id}: ${candidate.role_category ?? 'null'} -> ${next ?? 'null'}  (${title})`);
+    console.log(
+      `candidate ${candidate.id}: ${candidate.role_category ?? 'null'} -> ${next ?? 'null'}  (${title})`,
+    );
   }
 
-  console.log(`Done. jobs changed=${jobsChanged}/${jobs.length}, candidates changed=${candidatesChanged}/${candidates.length}`);
+  console.log(
+    `Done. jobs changed=${jobsChanged}/${jobs.length}, candidates changed=${candidatesChanged}/${candidates.length}`,
+  );
   sqlite.close();
 }
 

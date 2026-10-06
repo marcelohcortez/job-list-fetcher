@@ -57,9 +57,7 @@ export class CvMatcher {
   constructor(cvText: string) {
     this.cvTerms = termFrequencies(cvText);
     const normalizedCv = normalizeText(cvText);
-    this.cvPhrases = SKILL_PHRASES.filter((phrase) =>
-      containsPhrase(normalizedCv, phrase),
-    );
+    this.cvPhrases = SKILL_PHRASES.filter((phrase) => containsPhrase(normalizedCv, phrase));
   }
 
   match(jobs: readonly MatchableJob[]): CvMatch[] {

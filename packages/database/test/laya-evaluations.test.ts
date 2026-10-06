@@ -121,7 +121,9 @@ describe('laya-evaluations repository', () => {
 
   it('returns an empty map for a candidate with no evaluations', async () => {
     const jobOpeningId = await seedJob('rec-3');
-    const evaluations = await getLayaEvaluationsForCandidate(db, 'no-such-candidate', [jobOpeningId]);
+    const evaluations = await getLayaEvaluationsForCandidate(db, 'no-such-candidate', [
+      jobOpeningId,
+    ]);
     expect(evaluations.size).toBe(0);
   });
 });

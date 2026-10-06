@@ -25,10 +25,7 @@ export class CinodeMarketAdapter {
   private readonly baseUrl: string;
   private readonly maxPages: number;
   private readonly rateLimitMs: number;
-  private readonly fetcher: (
-    url: string,
-    init?: RequestInit,
-  ) => Promise<Response>;
+  private readonly fetcher: (url: string, init?: RequestInit) => Promise<Response>;
 
   constructor(options: CinodeMarketAdapterOptions = {}) {
     this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
@@ -53,9 +50,7 @@ export class CinodeMarketAdapter {
 
       if (cards.length === 0) {
         if (page === 0) {
-          console.warn(
-            'Cinode Market returned no listings - the card markup may have changed',
-          );
+          console.warn('Cinode Market returned no listings - the card markup may have changed');
         }
         break;
       }
@@ -178,14 +173,10 @@ export function buildDescription(detail: MarketDetail): string | null {
  * so it's appended to the description as its own line rather than dropped.
  */
 function parseDetail(html: string): MarketDetail {
-  const bodyMatch = html.match(
-    /<div class="wysiwyg-output">([\s\S]*?)<\/div>\s*<\/div>/,
-  );
+  const bodyMatch = html.match(/<div class="wysiwyg-output">([\s\S]*?)<\/div>\s*<\/div>/);
   const description = bodyMatch ? decodeHtml(stripTags(bodyMatch[1])) : null;
 
-  const skillsSectionMatch = html.match(
-    /<section class="details__skills">([\s\S]*?)<\/section>/,
-  );
+  const skillsSectionMatch = html.match(/<section class="details__skills">([\s\S]*?)<\/section>/);
   const skills = skillsSectionMatch
     ? [...skillsSectionMatch[1].matchAll(/class="details__skill">\s*<a[^>]*title="([^"]*)"/g)].map(
         (match) => decodeHtml(match[1]),
@@ -204,10 +195,7 @@ function parseCards(html: string): MarketCard[] {
     if (!id) continue;
     cards.push({
       id,
-      title: textOf(
-        chunk,
-        /requests-list__title[^>]*>([\s\S]*?)<\/(?:a|h\d|div|span)>/,
-      ),
+      title: textOf(chunk, /requests-list__title[^>]*>([\s\S]*?)<\/(?:a|h\d|div|span)>/),
       company: textOf(chunk, /card-company list__text[^>]*>([\s\S]*?)<\/span>/),
       location: parseLocation(chunk),
       deadline: parseCardDate(chunk, 'Deadline'),
@@ -230,15 +218,12 @@ function parseButtonCursor(html: string): string | null {
  * city through the location filter on the strength of the word alone.
  */
 function parseLocation(chunk: string): string {
-  for (const match of chunk.matchAll(
-    /<div class="focus__item">([\s\S]*?)<\/div>/g,
-  )) {
+  for (const match of chunk.matchAll(/<div class="focus__item">([\s\S]*?)<\/div>/g)) {
     if (!match[1].includes('#icon-map-pin')) continue;
     const text = decodeHtml(stripTags(match[1]));
     const city = text.replace(/\s*\([^)]*\)\s*$/, '').trim();
     const suffix = firstMatch(text, /\(([^)]*)\)\s*$/) ?? '';
-    const isFullyRemote =
-      /^100\s*%\s*remote$/i.test(suffix) || /^remote$/i.test(suffix);
+    const isFullyRemote = /^100\s*%\s*remote$/i.test(suffix) || /^remote$/i.test(suffix);
     if (!city) return isFullyRemote || /remote/i.test(text) ? 'Remote' : text;
     return isFullyRemote ? `${city} (Remote)` : city;
   }
@@ -262,9 +247,7 @@ const MONTHS: Record<string, number> = {
 
 /** Card dates read as "Deadline 30 Sep, 2026"; there is no time component. */
 function parseCardDate(chunk: string, label: string): Date | null {
-  const pattern = new RegExp(
-    `${label}\\s+(\\d{1,2})\\s+([A-Za-z]{3})[a-z]*,?\\s+(\\d{4})`,
-  );
+  const pattern = new RegExp(`${label}\\s+(\\d{1,2})\\s+([A-Za-z]{3})[a-z]*,?\\s+(\\d{4})`);
   const match = stripTags(chunk).match(pattern);
   if (!match) return null;
   const month = MONTHS[match[2].toLowerCase()];
@@ -292,9 +275,7 @@ function stripTags(value: string): string {
 
 function decodeHtml(value: string): string {
   return value
-    .replace(/&#x([0-9a-f]+);/gi, (_, code) =>
-      String.fromCodePoint(Number.parseInt(code, 16)),
-    )
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(Number.parseInt(code, 16)))
     .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")

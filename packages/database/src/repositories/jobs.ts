@@ -1,9 +1,6 @@
 import type { Kysely, Transaction } from 'kysely';
 import type { SourceRecord } from '@job-fetcher/domain';
-import {
-  calculateCanonicalKey,
-  canonicalizeLocation,
-} from '@job-fetcher/domain';
+import { calculateCanonicalKey, canonicalizeLocation } from '@job-fetcher/domain';
 import type { JobDb } from '../schema';
 import type { JobOpeningsTable, SourceRecordsTable } from '../schema';
 import { toJobOpening } from '../mappers';
@@ -56,8 +53,7 @@ function jobRow(
     source_job_id: record.sourceJobId,
     source_url: record.url,
     application_url: record.applicationUrl ?? null,
-    raw_payload:
-      record.rawPayload != null ? JSON.stringify(record.rawPayload) : null,
+    raw_payload: record.rawPayload != null ? JSON.stringify(record.rawPayload) : null,
     first_seen_at: now,
     last_seen_at: now,
     last_verified_at: now,
@@ -66,10 +62,7 @@ function jobRow(
   };
 }
 
-function sourceRecordRow(
-  record: SourceRecord,
-  jobOpeningId: string,
-): SourceRecordsTable {
+function sourceRecordRow(record: SourceRecord, jobOpeningId: string): SourceRecordsTable {
   return {
     id: `${record.sourceName}:${record.sourceJobId ?? record.id}`,
     job_opening_id: jobOpeningId,
@@ -83,8 +76,7 @@ function sourceRecordRow(
     application_url: record.applicationUrl ?? null,
     deadline: record.deadline?.toISOString() ?? null,
     status: record.status,
-    raw_payload:
-      record.rawPayload != null ? JSON.stringify(record.rawPayload) : null,
+    raw_payload: record.rawPayload != null ? JSON.stringify(record.rawPayload) : null,
     fetched_at: record.fetchedAt.toISOString(),
     source_published_at: record.sourcePublishedAt?.toISOString() ?? null,
   };
@@ -182,16 +174,12 @@ export function listJobs(db: Kysely<JobDb>, filter: JobFilter = {}) {
 
   if (filter.source) q = q.where('source_name', '=', filter.source);
   if (filter.status) q = q.where('status', '=', filter.status);
-  if (filter.employmentType)
-    q = q.where('employment_type', '=', filter.employmentType);
+  if (filter.employmentType) q = q.where('employment_type', '=', filter.employmentType);
   if (filter.seniority) q = q.where('seniority', '=', filter.seniority);
   if (filter.location) {
     const needle = `%${filter.location.toLowerCase()}%`;
     q = q.where((eb) =>
-      eb.or([
-        eb('normalized_location', 'like', needle),
-        eb('location_text', 'like', needle),
-      ]),
+      eb.or([eb('normalized_location', 'like', needle), eb('location_text', 'like', needle)]),
     );
   }
   if (filter.query) {
@@ -206,18 +194,11 @@ export function listJobs(db: Kysely<JobDb>, filter: JobFilter = {}) {
   }
 
   const now = new Date().toISOString();
-  const oneYearAgo = new Date(
-    Date.now() - 365 * 24 * 60 * 60 * 1000,
-  ).toISOString();
+  const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
 
+  q = q.where((eb) => eb.or([eb('deadline_at', 'is', null), eb('deadline_at', '>=', now)]));
   q = q.where((eb) =>
-    eb.or([eb('deadline_at', 'is', null), eb('deadline_at', '>=', now)]),
-  );
-  q = q.where((eb) =>
-    eb.or([
-      eb('published_at', 'is', null),
-      eb('published_at', '>=', oneYearAgo),
-    ]),
+    eb.or([eb('published_at', 'is', null), eb('published_at', '>=', oneYearAgo)]),
   );
 
   const limit = filter.limit ?? 50;
@@ -310,10 +291,7 @@ export async function ingestSourceRecord(
     }
 
     const { id, created } = await upsertJobOpening(trx, record, now);
-    await trx
-      .insertInto('source_records')
-      .values(sourceRecordRow(record, id))
-      .execute();
+    await trx.insertInto('source_records').values(sourceRecordRow(record, id)).execute();
     return { created, unchanged: false, jobOpeningId: id };
   });
 }

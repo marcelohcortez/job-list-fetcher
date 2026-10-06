@@ -35,7 +35,8 @@ export type RoleCategory = (typeof ROLE_CATEGORIES)[number];
  * "säkerhets-ingenjör") recovers that boundary so the patterns below - which
  * only know English vocabulary - have a real prefix word to test.
  */
-const SWEDISH_SUFFIX_SPLIT = /([a-z]+?)s?(utvecklare|ingenjor|arkitekt|konsult|analytiker|specialist)\b/g;
+const SWEDISH_SUFFIX_SPLIT =
+  /([a-z]+?)s?(utvecklare|ingenjor|arkitekt|konsult|analytiker|specialist)\b/g;
 
 /**
  * Common Swedish tech-title roots/suffixes translated to their English
@@ -131,7 +132,10 @@ export const DEFAULT_CATEGORY_PATTERN_SOURCES: readonly (readonly [RoleCategory,
     'product-management',
     '\\b(product manager|product owner|program manager|technical program manager|product operations)\\b',
   ],
-  ['delivery-management', '\\b(delivery manager|project manager|scrum master|engagement manager|programme manager)\\b'],
+  [
+    'delivery-management',
+    '\\b(delivery manager|project manager|scrum master|engagement manager|programme manager)\\b',
+  ],
   [
     'business-analysis',
     '\\b(business analyst|business systems analyst|solution analyst|systems analyst|ai analyst)\\b',
@@ -141,7 +145,10 @@ export const DEFAULT_CATEGORY_PATTERN_SOURCES: readonly (readonly [RoleCategory,
     '\\b(sales engineer|customer success|technical account manager|customer enablement|solutions engineer)\\b',
   ],
   ['consulting-advisory', '\\b(consultant|advisor|advisory)\\b'],
-  ['engineering', '\\b(engineer|developer|architect|full ?stack|frontend|front end|backend|software)\\b'],
+  [
+    'engineering',
+    '\\b(engineer|developer|architect|full ?stack|frontend|front end|backend|software)\\b',
+  ],
 ];
 
 function compileCategoryPatterns(
@@ -161,9 +168,7 @@ export function getCategoryPatternSources(): readonly (readonly [RoleCategory, s
  * every `ROLE_CATEGORIES` entry exactly once - order is precedence
  * (most-specific-first, same rule as the built-in default).
  */
-export function setCategoryPatterns(
-  sources: readonly (readonly [RoleCategory, string])[],
-): void {
+export function setCategoryPatterns(sources: readonly (readonly [RoleCategory, string])[]): void {
   categoryPatterns = compileCategoryPatterns(sources);
 }
 
@@ -191,8 +196,20 @@ export function categorizeRoleTitle(title: string): RoleCategory | null {
  * to catch.
  */
 const ADJACENT_CATEGORIES: Readonly<Record<RoleCategory, ReadonlySet<RoleCategory>>> = {
-  engineering: new Set(['engineering', 'devops-cloud', 'data-ai', 'leadership', 'consulting-advisory']),
-  'devops-cloud': new Set(['devops-cloud', 'engineering', 'data-ai', 'leadership', 'consulting-advisory']),
+  engineering: new Set([
+    'engineering',
+    'devops-cloud',
+    'data-ai',
+    'leadership',
+    'consulting-advisory',
+  ]),
+  'devops-cloud': new Set([
+    'devops-cloud',
+    'engineering',
+    'data-ai',
+    'leadership',
+    'consulting-advisory',
+  ]),
   'data-ai': new Set(['data-ai', 'engineering', 'devops-cloud', 'consulting-advisory']),
   'product-management': new Set([
     'product-management',
@@ -208,7 +225,12 @@ const ADJACENT_CATEGORIES: Readonly<Record<RoleCategory, ReadonlySet<RoleCategor
     'leadership',
     'consulting-advisory',
   ]),
-  'business-analysis': new Set(['business-analysis', 'product-management', 'delivery-management', 'consulting-advisory']),
+  'business-analysis': new Set([
+    'business-analysis',
+    'product-management',
+    'delivery-management',
+    'consulting-advisory',
+  ]),
   'consulting-advisory': new Set([
     'consulting-advisory',
     'engineering',
@@ -242,7 +264,11 @@ const ADJACENT_CATEGORIES: Readonly<Record<RoleCategory, ReadonlySet<RoleCategor
   // native-mobile role - so a confident native-mobile title match against a
   // web/backend-only CV should be penalized, not treated as compatible.
   'mobile-native': new Set(['mobile-native']),
-  'sales-customer-success': new Set(['sales-customer-success', 'consulting-advisory', 'delivery-management']),
+  'sales-customer-success': new Set([
+    'sales-customer-success',
+    'consulting-advisory',
+    'delivery-management',
+  ]),
 };
 
 /**

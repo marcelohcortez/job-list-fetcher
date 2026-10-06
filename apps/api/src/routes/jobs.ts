@@ -55,16 +55,8 @@ export function jobsRoutes(db: Kysely<JobDb>) {
   });
 
   app.get('/', async (c) => {
-    const {
-      source,
-      location,
-      status,
-      employmentType,
-      seniority,
-      query,
-      limit,
-      offset,
-    } = c.req.query();
+    const { source, location, status, employmentType, seniority, query, limit, offset } =
+      c.req.query();
     const jobs = await listJobs(db, {
       source,
       location,
@@ -83,9 +75,7 @@ export function jobsRoutes(db: Kysely<JobDb>) {
     const id = c.req.param('id');
     const job = await getJobById(db, id);
     if (!job) return c.json({ error: 'not_found' }, 404);
-    const sources = (await getSourcesForJob(db, id))
-      .map(toSourceRecord)
-      .map(publicSource);
+    const sources = (await getSourcesForJob(db, id)).map(toSourceRecord).map(publicSource);
     const marks = await getUserMarks(db, [id]);
     const sentCvs = await getSentCvIds(db, [id]);
     return c.json({
@@ -137,10 +127,7 @@ export function jobsRoutes(db: Kysely<JobDb>) {
 
     const body = await c.req.json().catch(() => null);
     const candidateIds: unknown = body?.candidateIds;
-    if (
-      !Array.isArray(candidateIds) ||
-      !candidateIds.every((v) => typeof v === 'string')
-    ) {
+    if (!Array.isArray(candidateIds) || !candidateIds.every((v) => typeof v === 'string')) {
       return c.json({ error: 'invalid_candidate_ids' }, 400);
     }
 

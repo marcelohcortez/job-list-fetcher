@@ -93,11 +93,7 @@ describe('createSkillCanonicalizer', () => {
     const ids = await canonicalize(['frontend-utveckling']);
     expect(ids).toHaveLength(1);
     expect(ids[0]).not.toBe('stale-id');
-    expect(vectorStore.upsertSkill).toHaveBeenCalledWith(
-      ids[0],
-      [0.3, 0.4],
-      'frontend utveckling',
-    );
+    expect(vectorStore.upsertSkill).toHaveBeenCalledWith(ids[0], [0.3, 0.4], 'frontend utveckling');
   });
 
   it('mints a new skill when the nearest match is below the similarity threshold', async () => {

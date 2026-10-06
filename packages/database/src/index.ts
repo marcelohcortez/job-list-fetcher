@@ -86,16 +86,8 @@ export {
   upsertSkillRelation,
   getSkillRelationsFor,
 } from './repositories/skill-relations';
-export type {
-  NewSkillRelation,
-  SkillRelationPartner,
-} from './repositories/skill-relations';
-export {
-  listAppConfig,
-  getAppConfig,
-  setAppConfig,
-  deleteAppConfig,
-} from './repositories/config';
+export type { NewSkillRelation, SkillRelationPartner } from './repositories/skill-relations';
+export { listAppConfig, getAppConfig, setAppConfig, deleteAppConfig } from './repositories/config';
 export {
   upsertLayaEvaluation,
   getLayaEvaluationsForCandidate,

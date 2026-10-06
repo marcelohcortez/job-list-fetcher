@@ -47,10 +47,7 @@ export async function finishIngestionRun(
     .execute();
 }
 
-export async function listIngestionRuns(
-  db: Kysely<JobDb>,
-  limit = 20,
-): Promise<IngestionRun[]> {
+export async function listIngestionRuns(db: Kysely<JobDb>, limit = 20): Promise<IngestionRun[]> {
   const rows = await db
     .selectFrom('ingestion_runs')
     .selectAll()
@@ -64,9 +61,7 @@ export async function listIngestionRuns(
     endTime: row.end_time ? new Date(row.end_time) : null,
     status: row.status as IngestionRun['status'],
     sources: JSON.parse(row.sources) as string[],
-    counts: row.counts
-      ? (JSON.parse(row.counts) as IngestionRun['counts'])
-      : emptyCounts(),
+    counts: row.counts ? (JSON.parse(row.counts) as IngestionRun['counts']) : emptyCounts(),
     error: row.error ?? undefined,
   }));
 }

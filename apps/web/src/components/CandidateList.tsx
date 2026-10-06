@@ -35,9 +35,7 @@ export function CandidateList({
         <li key={candidate.id} className="candidate">
           <div className="candidate-info">
             <strong>{candidate.candidateName ?? candidate.fileName}</strong>
-            {candidate.candidateTitle && (
-              <span className="muted">{candidate.candidateTitle}</span>
-            )}
+            {candidate.candidateTitle && <span className="muted">{candidate.candidateTitle}</span>}
             <span className={`status status-${candidate.status}`}>
               {STATUS_LABEL[candidate.status]}
             </span>
@@ -46,9 +44,7 @@ export function CandidateList({
             <span>{candidate.fileName}</span>
             <span>{formatBytes(candidate.sizeBytes)}</span>
             <span>{candidate.wordCount} words</span>
-            <span className="muted">
-              {new Date(candidate.updatedAt).toLocaleString()}
-            </span>
+            <span className="muted">{new Date(candidate.updatedAt).toLocaleString()}</span>
           </div>
           {candidate.status === 'failed' && candidate.error && (
             <p className="error" role="alert">
@@ -60,11 +56,9 @@ export function CandidateList({
               <p>
                 Same name and role as an existing CV,{' '}
                 <strong>
-                  {byId.get(candidate.duplicateOfId)?.fileName ??
-                    'an existing candidate'}
+                  {byId.get(candidate.duplicateOfId)?.fileName ?? 'an existing candidate'}
                 </strong>
-                . Keep the existing one and ignore this upload, or replace it
-                with this new CV?
+                . Keep the existing one and ignore this upload, or replace it with this new CV?
               </p>
               <div className="candidate-duplicate-actions">
                 <button
@@ -72,18 +66,14 @@ export function CandidateList({
                   onClick={() => onResolveDuplicate?.(candidate.id, 'ignore')}
                   disabled={resolvingId === candidate.id}
                 >
-                  {resolvingId === candidate.id
-                    ? 'Working...'
-                    : 'Ignore new upload'}
+                  {resolvingId === candidate.id ? 'Working...' : 'Ignore new upload'}
                 </button>
                 <button
                   className="refresh"
                   onClick={() => onResolveDuplicate?.(candidate.id, 'replace')}
                   disabled={resolvingId === candidate.id}
                 >
-                  {resolvingId === candidate.id
-                    ? 'Working...'
-                    : 'Replace existing'}
+                  {resolvingId === candidate.id ? 'Working...' : 'Replace existing'}
                 </button>
               </div>
             </div>

@@ -85,13 +85,7 @@ const PROFILE_JSON_SCHEMA = {
       description: PROFILE_FIELD_DESCRIPTIONS.coreResponsibilities,
     },
   },
-  required: [
-    'title',
-    'requiredSkills',
-    'softSkills',
-    'experienceProfile',
-    'coreResponsibilities',
-  ],
+  required: ['title', 'requiredSkills', 'softSkills', 'experienceProfile', 'coreResponsibilities'],
 };
 
 const CANDIDATE_JSON_SCHEMA = {
@@ -177,8 +171,8 @@ const SKILLS_EXTRACTION_SYSTEM_PROMPT =
   SKILL_SPLIT_INSTRUCTION;
 
 const CANDIDATE_SYSTEM_PROMPT =
-  'You are an elite automated CV parser. Extract the candidate\'s name and ' +
-  "their skills/experience into the requested JSON schema. `title` is the " +
+  "You are an elite automated CV parser. Extract the candidate's name and " +
+  'their skills/experience into the requested JSON schema. `title` is the ' +
   "candidate's own most recent or target job title - but requiredSkills, " +
   'softSkills, and coreResponsibilities must be extracted from the ENTIRE ' +
   'CV, not just the most recent role: include every technology, tool, or ' +
@@ -275,7 +269,9 @@ export function createOllamaSanitizer(config: OllamaConfig): SanitizerClient {
         SKILLS_ONLY_JSON_SCHEMA,
         EXTRACT_SKILLS_MAX_TOKENS,
       )) as { skills?: unknown };
-      return Array.isArray(parsed.skills) ? parsed.skills.filter((s): s is string => typeof s === 'string') : [];
+      return Array.isArray(parsed.skills)
+        ? parsed.skills.filter((s): s is string => typeof s === 'string')
+        : [];
     },
 
     async embed(text) {

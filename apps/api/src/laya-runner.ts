@@ -30,8 +30,14 @@ import {
  * moderate) while still costing an inference call. Unknown categories are
  * never skipped.
  */
-function isRolePairCompatible(jobCategory: string | null, candidateCategory: string | null): boolean {
-  return areRoleCategoriesCompatible(jobCategory as RoleCategory | null, candidateCategory as RoleCategory | null);
+function isRolePairCompatible(
+  jobCategory: string | null,
+  candidateCategory: string | null,
+): boolean {
+  return areRoleCategoriesCompatible(
+    jobCategory as RoleCategory | null,
+    candidateCategory as RoleCategory | null,
+  );
 }
 
 async function evaluatePair(
@@ -75,7 +81,14 @@ export async function evaluateLayaForNewJob(
     const candidate = await getCandidate(db, hit.id);
     if (!candidate?.anchor_document) continue;
     if (!isRolePairCompatible(jobCategory, candidate.role_category)) continue;
-    await evaluatePair(db, layaClient, jobOpeningId, jobAnchorDocument, hit.id, candidate.anchor_document);
+    await evaluatePair(
+      db,
+      layaClient,
+      jobOpeningId,
+      jobAnchorDocument,
+      hit.id,
+      candidate.anchor_document,
+    );
   }
 }
 

@@ -65,12 +65,10 @@ const FIT_RUBRIC = ['weak', 'moderate', 'strong'] as const;
 const LAYA_QUESTIONS = {
   verdict: {
     type: 'choice',
-    instructions:
-      'How well does this candidate CV match the job description\'s core requirements?',
+    instructions: "How well does this candidate CV match the job description's core requirements?",
     criteria: {
       strong: "Candidate clearly meets or exceeds the job's core requirements.",
-      moderate:
-        'Candidate partially matches: meets some requirements but has notable gaps.',
+      moderate: 'Candidate partially matches: meets some requirements but has notable gaps.',
       weak: "Candidate does not match the job's core requirements.",
     },
   },
@@ -160,17 +158,11 @@ async function callSystemOne(
   return { verdict, rawScore, truncated };
 }
 
-export function createLayaClient(
-  config: LayaConfig,
-  reasoner: ReasoningGenerator,
-): LayaClient {
+export function createLayaClient(config: LayaConfig, reasoner: ReasoningGenerator): LayaClient {
   return {
     async evaluate({ jobText, cvText }) {
       const { verdict, rawScore, truncated } = await callSystemOne(config, jobText, cvText);
-      const score = Math.max(
-        0,
-        Math.min(1, rawScore / (FIT_RUBRIC.length - 1)),
-      );
+      const score = Math.max(0, Math.min(1, rawScore / (FIT_RUBRIC.length - 1)));
       const { reasoning, mismatchReasoning } = await reasoner.generate({
         jobText,
         cvText,
@@ -196,7 +188,7 @@ const REASONING_SYSTEM_PROMPT =
   'Y"), split it into two sentences and place each half in its correct ' +
   'section below.\n\n' +
   `1. Under the exact line "${MATCH_MARKER}", write a full paragraph of ` +
-  "5-8 sentences, entirely positive, on why the candidate fits: which of " +
+  '5-8 sentences, entirely positive, on why the candidate fits: which of ' +
   "the job's specific requirements the candidate's experience, skills, or " +
   'projects satisfy, citing concrete details from both documents (not ' +
   'generic praise like "strong communicator"). Crucially, for every ' +
@@ -223,17 +215,12 @@ const REASONING_SYSTEM_PROMPT =
   'labeled sections as prose paragraphs, no preamble, no markdown, no ' +
   'bullet points.';
 
-function findMarker(
-  content: string,
-  marker: string,
-): { start: number; end: number } | null {
+function findMarker(content: string, marker: string): { start: number; end: number } | null {
   // Tolerate the model varying case or wrapping the marker in markdown
   // emphasis (**MATCH:**) despite being told not to - a literal indexOf
   // would otherwise miss it and silently collapse both sections together.
   // Negative lookbehind keeps "MATCH:" from matching inside "MISMATCH:".
-  const match = new RegExp(`(?<![A-Za-z])\\**${marker.replace(':', '')}:\\**`, 'i').exec(
-    content,
-  );
+  const match = new RegExp(`(?<![A-Za-z])\\**${marker.replace(':', '')}:\\**`, 'i').exec(content);
   return match ? { start: match.index, end: match.index + match[0].length } : null;
 }
 

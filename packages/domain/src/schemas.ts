@@ -1,17 +1,7 @@
 import { z } from 'zod';
 
-export const jobStatusSchema = z.enum([
-  'active',
-  'expired_grace_period',
-  'closed',
-  'unknown',
-]);
-export const workModelSchema = z.enum([
-  'remote',
-  'hybrid',
-  'onsite',
-  'unknown',
-]);
+export const jobStatusSchema = z.enum(['active', 'expired_grace_period', 'closed', 'unknown']);
+export const workModelSchema = z.enum(['remote', 'hybrid', 'onsite', 'unknown']);
 
 export const JobOpeningSchema = z.object({
   id: z.string(),

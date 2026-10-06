@@ -20,7 +20,7 @@
 **Considered Options**:
 
 - **Pass the GPU into the Ollama container** (e.g. `--gpus` on Linux with NVIDIA, or a Docker Desktop Apple Silicon GPU passthrough feature). Rejected — Docker Desktop on macOS does not expose Metal to Linux containers at all; there's no flag that fixes this on Apple Silicon.
-- **Keep Ollama in Docker and just cap generation length (`num_predict`) to bound the worst case.** Considered as a smaller, additive change, but doesn't address the root cause — CPU-only inference stays ~15x slower regardless of caps; a cap only prevents runaway *tail* latency, not the baseline. Kept as a separate, complementary follow-up rather than a substitute.
+- **Keep Ollama in Docker and just cap generation length (`num_predict`) to bound the worst case.** Considered as a smaller, additive change, but doesn't address the root cause — CPU-only inference stays ~15x slower regardless of caps; a cap only prevents runaway _tail_ latency, not the baseline. Kept as a separate, complementary follow-up rather than a substitute.
 - **Drop Docker entirely for local dev.** Rejected — `chroma` has no GPU dependency and containerizing it costs nothing; only the model-serving piece needed to move.
 
 **Consequences**:

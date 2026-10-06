@@ -129,7 +129,12 @@ export async function runIngestion(
 
     counts.fetched += records.length;
     for (const record of records) {
-      const eligibility = isJobEligible(record.deadline, record.status, now, record.sourcePublishedAt);
+      const eligibility = isJobEligible(
+        record.deadline,
+        record.status,
+        now,
+        record.sourcePublishedAt,
+      );
       if (!eligibility.isEligible) {
         counts.rejected += 1;
         continue;
@@ -178,11 +183,9 @@ export async function runIngestion(
         try {
           await options.embedJob(result.jobOpeningId, rawText);
         } catch (err) {
-          await markJobEmbeddingFailed(
-            db,
-            result.jobOpeningId,
-            (err as Error).message,
-          ).catch(() => {});
+          await markJobEmbeddingFailed(db, result.jobOpeningId, (err as Error).message).catch(
+            () => {},
+          );
           console.warn(
             `Embedding failed for job ${result.jobOpeningId}: ${(err as Error).message}`,
           );

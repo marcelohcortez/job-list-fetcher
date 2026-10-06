@@ -1,9 +1,7 @@
 import type { SourceRecord } from '@job-fetcher/domain';
 import type { MatchResult } from '@job-fetcher/domain';
 
-export function makeSourceRecord(
-  overrides: Partial<SourceRecord> = {},
-): SourceRecord {
+export function makeSourceRecord(overrides: Partial<SourceRecord> = {}): SourceRecord {
   return {
     id: `rec-${Math.random().toString(36).slice(2, 8)}`,
     sourceName: 'cinode',

@@ -6,10 +6,7 @@ export interface UserJobState {
   seenAt: string | null;
 }
 
-async function pruneIfEmpty(
-  db: Kysely<JobDb>,
-  jobOpeningId: string,
-): Promise<void> {
+async function pruneIfEmpty(db: Kysely<JobDb>, jobOpeningId: string): Promise<void> {
   await db
     .deleteFrom('user_job_marks')
     .where('job_opening_id', '=', jobOpeningId)
@@ -35,9 +32,7 @@ async function upsertRow(
     .onConflict((oc) =>
       oc.column('job_opening_id').doUpdateSet((eb) => ({
         ...(patch.mark !== undefined ? { mark: eb.ref('excluded.mark') } : {}),
-        ...(patch.seen_at !== undefined
-          ? { seen_at: eb.ref('excluded.seen_at') }
-          : {}),
+        ...(patch.seen_at !== undefined ? { seen_at: eb.ref('excluded.seen_at') } : {}),
         updated_at: eb.ref('excluded.updated_at'),
       })),
     )

@@ -14,8 +14,7 @@ let db: Kysely<JobDb>;
 const fakeSemantic: SemanticPipeline = {
   sanitizer: {
     sanitizeJob: () => Promise.reject(new Error('not used in these tests')),
-    sanitizeCandidate: () =>
-      Promise.reject(new Error('not used in these tests')),
+    sanitizeCandidate: () => Promise.reject(new Error('not used in these tests')),
     extractSkills: () => Promise.reject(new Error('not used in these tests')),
     embed: () => Promise.reject(new Error('not used in these tests')),
   },
@@ -137,9 +136,7 @@ describe('GET /jobs', () => {
     const other = await (await app.request('/api/jobs?source=other')).json();
     expect(other.count).toBe(1);
     expect(other.data[0].sourceName).toBe('other');
-    const search = await (
-      await app.request('/api/jobs/search?query=analyst')
-    ).json();
+    const search = await (await app.request('/api/jobs/search?query=analyst')).json();
     expect(search.count).toBe(1);
   });
 
@@ -251,9 +248,7 @@ describe('POST /ingestion/run', () => {
   it('is idempotent across repeated runs', async () => {
     const app = createTestApp(db, [cinodeAdapter]);
     await app.request('/api/ingestion/run', { method: 'POST' });
-    const again = await (
-      await app.request('/api/ingestion/run', { method: 'POST' })
-    ).json();
+    const again = await (await app.request('/api/ingestion/run', { method: 'POST' })).json();
     expect(again.data.counts).toMatchObject({
       accepted: 1,
       created: 0,

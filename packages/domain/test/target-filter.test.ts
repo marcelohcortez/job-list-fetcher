@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  matchesTargetTitle,
-  matchesTargetLocation,
-  isJobInScope,
-} from '../src/target-filter';
+import { matchesTargetTitle, matchesTargetLocation, isJobInScope } from '../src/target-filter';
 
 describe('matchesTargetTitle', () => {
   it('matches exact target roles and seniority-prefixed variants', () => {
@@ -71,35 +67,21 @@ describe('matchesTargetTitle', () => {
   it('matches curated Swedish role phrases', () => {
     expect(matchesTargetTitle('Systemutvecklare')).toBe(true);
     expect(matchesTargetTitle('Mjukvaruutvecklare')).toBe(true);
-    expect(
-      matchesTargetTitle('Android-utvecklare till produktnära teknikbolag'),
-    ).toBe(true);
+    expect(matchesTargetTitle('Android-utvecklare till produktnära teknikbolag')).toBe(true);
     expect(matchesTargetTitle('Senior DevOps-ingenjör')).toBe(true);
     expect(matchesTargetTitle('Lösningsarkitekt')).toBe(true);
   });
 
   it('matches any hyphenated compound ending in utvecklare or konsult', () => {
     expect(matchesTargetTitle('PHP-utvecklare till kund')).toBe(true);
-    expect(
-      matchesTargetTitle('Interim SAP SuccessFactors-konsult – POSTNORD'),
-    ).toBe(true);
+    expect(matchesTargetTitle('Interim SAP SuccessFactors-konsult – POSTNORD')).toBe(true);
   });
 
   it('does not match unrelated Swedish engineering/trade titles', () => {
-    expect(matchesTargetTitle('Mekanikkonstruktör till försvarsbolag')).toBe(
-      false,
-    );
-    expect(
-      matchesTargetTitle('Testingenjör inom avancerad elektronik'),
-    ).toBe(false);
-    expect(
-      matchesTargetTitle(
-        'Provledare/elektroingenjör till innovativt bolag',
-      ),
-    ).toBe(false);
-    expect(matchesTargetTitle('Elkonstruktör inom medicinteknik')).toBe(
-      false,
-    );
+    expect(matchesTargetTitle('Mekanikkonstruktör till försvarsbolag')).toBe(false);
+    expect(matchesTargetTitle('Testingenjör inom avancerad elektronik')).toBe(false);
+    expect(matchesTargetTitle('Provledare/elektroingenjör till innovativt bolag')).toBe(false);
+    expect(matchesTargetTitle('Elkonstruktör inom medicinteknik')).toBe(false);
   });
 });
 
@@ -133,31 +115,23 @@ describe('matchesTargetLocation', () => {
     expect(matchesTargetLocation('U.S. Remote')).toBe(false);
     expect(matchesTargetLocation('Remote - US')).toBe(false);
     expect(matchesTargetLocation('Remote - Dallas, TX')).toBe(false);
-    expect(matchesTargetLocation('Remote - Massachusetts - Boston')).toBe(
-      false,
-    );
+    expect(matchesTargetLocation('Remote - Massachusetts - Boston')).toBe(false);
     expect(matchesTargetLocation('Remote - New York, NY')).toBe(false);
     expect(matchesTargetLocation('Remote (APAC)')).toBe(false);
     expect(matchesTargetLocation('Argentina Remote')).toBe(false);
     expect(matchesTargetLocation('Remote - India')).toBe(false);
     expect(matchesTargetLocation('Remote - Israel')).toBe(false);
-    expect(
-      matchesTargetLocation(
-        'Remote-Friendly (Travel-Required) | San Francisco, CA',
-      ),
-    ).toBe(false);
+    expect(matchesTargetLocation('Remote-Friendly (Travel-Required) | San Francisco, CA')).toBe(
+      false,
+    );
   });
 
   it('accepts remote roles tied to EMEA locations', () => {
     expect(matchesTargetLocation('Remote - France - Paris')).toBe(true);
     expect(matchesTargetLocation('Remote - Germany - Berlin')).toBe(true);
-    expect(
-      matchesTargetLocation('Home Based - Americas; Home based - EMEA'),
-    ).toBe(true);
+    expect(matchesTargetLocation('Home Based - Americas; Home based - EMEA')).toBe(true);
     expect(matchesTargetLocation('Remote - Lyon')).toBe(true);
-    expect(matchesTargetLocation('Remote - United Kingdom - London')).toBe(
-      true,
-    );
+    expect(matchesTargetLocation('Remote - United Kingdom - London')).toBe(true);
     expect(matchesTargetLocation('Remote - Spain - Barcelona')).toBe(true);
   });
 

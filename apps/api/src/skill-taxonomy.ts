@@ -8,7 +8,10 @@ import {
   type JobDb,
 } from '@job-fetcher/database';
 import type { VectorStore } from '@job-fetcher/semantic-match';
-import { getOsSkillExclusions, resolveSkillId as resolveCanonicalSkillId } from './skill-relations-seed';
+import {
+  getOsSkillExclusions,
+  resolveSkillId as resolveCanonicalSkillId,
+} from './skill-relations-seed';
 
 export type Embed = (text: string) => Promise<number[]>;
 
@@ -71,7 +74,10 @@ export function createSkillCanonicalizer(
         continue;
       }
 
-      if (normalized !== normalizeSkillLabel(CI_CD_CANONICAL_LABEL) && ciCdTokenPattern.test(normalized)) {
+      if (
+        normalized !== normalizeSkillLabel(CI_CD_CANONICAL_LABEL) &&
+        ciCdTokenPattern.test(normalized)
+      ) {
         const ciCdId = await resolveCanonicalSkillId(db, vectorStore, embed, CI_CD_CANONICAL_LABEL);
         skillIds.add(ciCdId);
         continue;

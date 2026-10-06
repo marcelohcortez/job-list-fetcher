@@ -266,7 +266,8 @@ function blendScore(
       continue;
     }
     const relatedCredit = (skillRelations.get(skill.id) ?? []).reduce(
-      (best, partner) => (candidateSkillIds.has(partner.skillId) ? Math.max(best, partner.weight) : best),
+      (best, partner) =>
+        candidateSkillIds.has(partner.skillId) ? Math.max(best, partner.weight) : best,
       0,
     );
     if (relatedCredit > 0) {
@@ -311,9 +312,7 @@ function blendScore(
  * that carries signal. With fewer than two evaluated pairs there is no
  * ordering to rank, so those pairs get no Laya term (weight folds back).
  */
-function layaRankScores(
-  evaluations: ReadonlyMap<string, { score: number }>,
-): Map<string, number> {
+function layaRankScores(evaluations: ReadonlyMap<string, { score: number }>): Map<string, number> {
   const ranks = new Map<string, number>();
   if (evaluations.size < 2) return ranks;
   const scores = [...evaluations.values()].map((evaluation) => evaluation.score);
@@ -355,8 +354,14 @@ async function matchesForCandidate(
     for (const skill of entry.jobSkills) jobSkillIds.add(skill.id);
   }
   const skillRelations = await getSkillRelationsFor(db, [...jobSkillIds]);
-  const jobRoleCategories = await getJobRoleCategories(db, entries.map((entry) => entry.job.id));
-  const jobSeniorityLevels = await getJobSeniorityLevels(db, entries.map((entry) => entry.job.id));
+  const jobRoleCategories = await getJobRoleCategories(
+    db,
+    entries.map((entry) => entry.job.id),
+  );
+  const jobSeniorityLevels = await getJobSeniorityLevels(
+    db,
+    entries.map((entry) => entry.job.id),
+  );
   const jobIds = entries.map((entry) => entry.job.id);
   const marks = await getUserMarks(db, jobIds);
   const sentCvs = await getSentCvIds(db, jobIds);
@@ -367,26 +372,27 @@ async function matchesForCandidate(
   for (const { hit, job, jobSkills } of entries) {
     const layaEvaluation = layaEvaluations.get(job.id) ?? null;
     const jobRoleCategory = (jobRoleCategories.get(job.id) ?? null) as RoleCategory | null;
-    const { score, baseScore, skillCoverage, matchedSkillCount, matchedSkills, missingSkills } = blendScore(
-      hit.similarity,
-      candidateSkillIds,
-      jobSkills,
-      config.skillOverlapWeight ?? DEFAULT_SKILL_OVERLAP_WEIGHT,
-      skillRelations,
-      {
-        job: jobRoleCategory,
-        candidate: candidateRoleCategory,
-        mismatchPenalty: config.roleMismatchPenalty ?? DEFAULT_ROLE_MISMATCH_PENALTY,
-      },
-      {
-        job: (jobSeniorityLevels.get(job.id) ?? null) as SeniorityLevel | null,
-        candidate: candidateSeniorityLevel,
-        mismatchPenalty: config.seniorityMismatchPenalty ?? DEFAULT_SENIORITY_MISMATCH_PENALTY,
-      },
-      config.noRequiredSkillsPenalty ?? DEFAULT_NO_REQUIRED_SKILLS_PENALTY,
-      config.minSkillsForFullConfidence ?? DEFAULT_MIN_SKILLS_FOR_FULL_CONFIDENCE,
-      { score: layaRanks.get(job.id) ?? null, weight: config.layaWeight ?? DEFAULT_LAYA_WEIGHT },
-    );
+    const { score, baseScore, skillCoverage, matchedSkillCount, matchedSkills, missingSkills } =
+      blendScore(
+        hit.similarity,
+        candidateSkillIds,
+        jobSkills,
+        config.skillOverlapWeight ?? DEFAULT_SKILL_OVERLAP_WEIGHT,
+        skillRelations,
+        {
+          job: jobRoleCategory,
+          candidate: candidateRoleCategory,
+          mismatchPenalty: config.roleMismatchPenalty ?? DEFAULT_ROLE_MISMATCH_PENALTY,
+        },
+        {
+          job: (jobSeniorityLevels.get(job.id) ?? null) as SeniorityLevel | null,
+          candidate: candidateSeniorityLevel,
+          mismatchPenalty: config.seniorityMismatchPenalty ?? DEFAULT_SENIORITY_MISMATCH_PENALTY,
+        },
+        config.noRequiredSkillsPenalty ?? DEFAULT_NO_REQUIRED_SKILLS_PENALTY,
+        config.minSkillsForFullConfidence ?? DEFAULT_MIN_SKILLS_FOR_FULL_CONFIDENCE,
+        { score: layaRanks.get(job.id) ?? null, weight: config.layaWeight ?? DEFAULT_LAYA_WEIGHT },
+      );
     // `minSimilarity` gates the blended skill/vector/Laya score. Laya's
     // verdict gets no veto: it rates nearly every pair strong/moderate, so
     // letting it bypass the threshold surfaced 1-of-8-skill matches.

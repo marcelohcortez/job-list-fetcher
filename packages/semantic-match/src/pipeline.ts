@@ -118,11 +118,7 @@ export async function processCandidate(
   const { candidateName: _candidateName, ...profile } = sanitized;
   const anchorDocument = buildAnchorDocument(profile);
   const embedding = await pipeline.sanitizer.embed(anchorDocument);
-  await pipeline.vectorStore.upsertCandidate(
-    candidateId,
-    embedding,
-    anchorDocument,
-  );
+  await pipeline.vectorStore.upsertCandidate(candidateId, embedding, anchorDocument);
   return { sanitized, anchorDocument };
 }
 
@@ -131,9 +127,7 @@ export async function matchJobsForCandidate(
   candidateId: string,
   topK?: number,
 ): Promise<Array<{ id: string; similarity: number }>> {
-  const embedding = await pipeline.vectorStore.getCandidateEmbedding(
-    candidateId,
-  );
+  const embedding = await pipeline.vectorStore.getCandidateEmbedding(candidateId);
   if (!embedding) return [];
   return pipeline.vectorStore.queryJobsForCandidate(embedding, topK);
 }

@@ -20,12 +20,12 @@ Anything failing eligibility, location, or title scope is rejected and never sto
 
 [`ollama.ts`](../packages/semantic-match/src/ollama.ts) sends the job's `title + company + description` (or a candidate's CV text) to a local model (`OLLAMA_CHAT_MODEL`, default `qwen2.5:7b`), extracting:
 
-| Field | Content | Used for |
-| --- | --- | --- |
-| `requiredSkills` | Hard/technical skills only | Discrete skill-coverage scoring |
-| `softSkills` | Behavioral/interpersonal qualities | Whole-document anchor only, never discrete scoring |
-| `experienceProfile` | Years/seniority/degree text | Anchor |
-| `coreResponsibilities` | Task list | Anchor |
+| Field                  | Content                            | Used for                                           |
+| ---------------------- | ---------------------------------- | -------------------------------------------------- |
+| `requiredSkills`       | Hard/technical skills only         | Discrete skill-coverage scoring                    |
+| `softSkills`           | Behavioral/interpersonal qualities | Whole-document anchor only, never discrete scoring |
+| `experienceProfile`    | Years/seniority/degree text        | Anchor                                             |
+| `coreResponsibilities` | Task list                          | Anchor                                             |
 
 A candidate's CV is first rewritten for ATS-style clarity ([`refactor.ts`](../packages/semantic-match/src/refactor.ts)) before sanitization runs against the rewritten text. The sanitized title is also classified into a coarse `role_category` (engineer, designer, product-management, ...) and a seniority level, stored alongside the sanitized output.
 

@@ -20,9 +20,7 @@ function candidateLabel(entry: CandidateMatches): string {
 }
 
 export function MatchesTab({ onMarkChange }: MatchesTabProps) {
-  const [candidateMatches, setCandidateMatches] = useState<CandidateMatches[]>(
-    [],
-  );
+  const [candidateMatches, setCandidateMatches] = useState<CandidateMatches[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingMarks, setPendingMarks] = useState<Record<string, boolean>>({});
@@ -57,9 +55,7 @@ export function MatchesTab({ onMarkChange }: MatchesTabProps) {
       setCandidateMatches((prev) =>
         prev.map((entry) => ({
           ...entry,
-          matches: entry.matches.map((m) =>
-            m.id === job.id ? { ...m, userMark: value } : m,
-          ),
+          matches: entry.matches.map((m) => (m.id === job.id ? { ...m, userMark: value } : m)),
         })),
       );
 
@@ -90,9 +86,7 @@ export function MatchesTab({ onMarkChange }: MatchesTabProps) {
       setCandidateMatches((prev) =>
         prev.map((entry) => ({
           ...entry,
-          matches: entry.matches.map((m) =>
-            m.id === job.id ? { ...m, seenAt: value } : m,
-          ),
+          matches: entry.matches.map((m) => (m.id === job.id ? { ...m, seenAt: value } : m)),
         })),
       );
 
@@ -118,9 +112,7 @@ export function MatchesTab({ onMarkChange }: MatchesTabProps) {
       [...candidateMatches]
         .map((entry) => ({
           ...entry,
-          matches: sortByPublishedDesc(
-            entry.matches.filter((job) => job.userMark !== 'dead'),
-          ),
+          matches: sortByPublishedDesc(entry.matches.filter((job) => job.userMark !== 'dead')),
         }))
         .sort((a, b) => candidateLabel(a).localeCompare(candidateLabel(b))),
     [candidateMatches],
@@ -137,17 +129,12 @@ export function MatchesTab({ onMarkChange }: MatchesTabProps) {
   const visibleMatches = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return sortedMatches;
-    return sortedMatches.filter((entry) =>
-      candidateLabel(entry).toLowerCase().includes(q),
-    );
+    return sortedMatches.filter((entry) => candidateLabel(entry).toLowerCase().includes(q));
   }, [search, sortedMatches]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        searchBoxRef.current &&
-        !searchBoxRef.current.contains(e.target as Node)
-      ) {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
         setShowSuggestions(false);
       }
     };
@@ -168,8 +155,7 @@ export function MatchesTab({ onMarkChange }: MatchesTabProps) {
 
       {candidateMatches.length === 0 ? (
         <p className="muted">
-          No sanitized candidates yet. Upload a CV on the Upload CV or Upload
-          CVs tab first.
+          No sanitized candidates yet. Upload a CV on the Upload CV or Upload CVs tab first.
         </p>
       ) : (
         <>
@@ -209,48 +195,48 @@ export function MatchesTab({ onMarkChange }: MatchesTabProps) {
             <p className="muted">No candidates match "{search}".</p>
           ) : (
             visibleMatches.map((entry) => (
-          <details key={entry.candidateId} className="candidate-matches">
-            <summary>
-              <h2>
-                {candidateLabel(entry)}
-                {entry.candidateTitle && (
-                  <span className="candidate-title"> - {entry.candidateTitle}</span>
+              <details key={entry.candidateId} className="candidate-matches">
+                <summary>
+                  <h2>
+                    {candidateLabel(entry)}
+                    {entry.candidateTitle && (
+                      <span className="candidate-title"> - {entry.candidateTitle}</span>
+                    )}
+                  </h2>
+                  <span className="count">
+                    {entry.matches.length} matching opening
+                    {entry.matches.length === 1 ? '' : 's'}
+                  </span>
+                </summary>
+                {entry.matches.length === 0 ? (
+                  <p className="muted">No matching openings yet.</p>
+                ) : (
+                  <ul className="jobs">
+                    {entry.matches.map((job) => (
+                      <JobCard
+                        key={job.id}
+                        job={job}
+                        similarity={job.similarity}
+                        baseScore={job.baseScore}
+                        skillCoverage={job.skillCoverage}
+                        matchedSkillCount={job.matchedSkillCount}
+                        requiredSkillCount={job.requiredSkillCount}
+                        matchedSkills={job.matchedSkills}
+                        missingSkills={job.missingSkills}
+                        layaScore={job.layaScore}
+                        layaChoice={job.layaChoice}
+                        layaReasoning={job.layaReasoning}
+                        layaMismatchReasoning={job.layaMismatchReasoning}
+                        layaTruncated={job.layaTruncated}
+                        markDisabled={pendingMarks[job.id]}
+                        onMark={handleMark}
+                        seenDisabled={pendingSeen[job.id]}
+                        onToggleSeen={handleToggleSeen}
+                      />
+                    ))}
+                  </ul>
                 )}
-              </h2>
-              <span className="count">
-                {entry.matches.length} matching opening
-                {entry.matches.length === 1 ? '' : 's'}
-              </span>
-            </summary>
-            {entry.matches.length === 0 ? (
-              <p className="muted">No matching openings yet.</p>
-            ) : (
-              <ul className="jobs">
-                {entry.matches.map((job) => (
-                  <JobCard
-                    key={job.id}
-                    job={job}
-                    similarity={job.similarity}
-                    baseScore={job.baseScore}
-                    skillCoverage={job.skillCoverage}
-                    matchedSkillCount={job.matchedSkillCount}
-                    requiredSkillCount={job.requiredSkillCount}
-                    matchedSkills={job.matchedSkills}
-                    missingSkills={job.missingSkills}
-                    layaScore={job.layaScore}
-                    layaChoice={job.layaChoice}
-                    layaReasoning={job.layaReasoning}
-                    layaMismatchReasoning={job.layaMismatchReasoning}
-                    layaTruncated={job.layaTruncated}
-                    markDisabled={pendingMarks[job.id]}
-                    onMark={handleMark}
-                    seenDisabled={pendingSeen[job.id]}
-                    onToggleSeen={handleToggleSeen}
-                  />
-                ))}
-              </ul>
-            )}
-          </details>
+              </details>
             ))
           )}
         </>

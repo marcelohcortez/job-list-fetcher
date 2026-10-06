@@ -93,7 +93,9 @@ function main() {
     .then(() =>
       loadConfigFromDb(db, { vectorStore: semantic.vectorStore, embed: semantic.sanitizer.embed }),
     )
-    .catch((err) => console.warn(`Startup migration/config load failed: ${(err as Error).message}`));
+    .catch((err) =>
+      console.warn(`Startup migration/config load failed: ${(err as Error).message}`),
+    );
 
   // Seeding needs the tables to exist, so on a fresh database it must wait for
   // migrations to finish.
@@ -119,11 +121,7 @@ function main() {
   );
 
   const embedJob: EmbedJob = async (jobOpeningId, rawText) => {
-    const { sanitized, anchorDocument } = await processJobOpening(
-      semantic,
-      jobOpeningId,
-      rawText,
-    );
+    const { sanitized, anchorDocument } = await processJobOpening(semantic, jobOpeningId, rawText);
     await markJobSanitized(db, jobOpeningId, {
       sanitizedJson: JSON.stringify(sanitized),
       anchorDocument,
@@ -133,7 +131,14 @@ function main() {
     const skillIds = await canonicalizeSkills(sanitized.requiredSkills);
     await replaceJobRequiredSkills(db, jobOpeningId, skillIds);
     if (laya) {
-      await evaluateLayaForNewJob(db, semantic, laya.client, jobOpeningId, anchorDocument, laya.topK);
+      await evaluateLayaForNewJob(
+        db,
+        semantic,
+        laya.client,
+        jobOpeningId,
+        anchorDocument,
+        laya.topK,
+      );
     }
   };
 

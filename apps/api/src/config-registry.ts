@@ -45,7 +45,11 @@ import {
   applySkillRelationSeeds,
   type SkillRelationSeed,
 } from './skill-relations-seed';
-import { DEFAULT_CI_CD_TOKEN_PATTERN, getCiCdTokenPattern, setCiCdTokenPattern } from './skill-taxonomy';
+import {
+  DEFAULT_CI_CD_TOKEN_PATTERN,
+  getCiCdTokenPattern,
+  setCiCdTokenPattern,
+} from './skill-taxonomy';
 
 export type Embed = (text: string) => Promise<number[]>;
 
@@ -55,18 +59,10 @@ export interface ApplyContext {
 }
 
 export type ConfigFieldType =
-  | 'string_list'
-  | 'regex'
-  | 'kv_map'
-  | 'ordered_pattern_list'
-  | 'relation_list';
+  'string_list' | 'regex' | 'kv_map' | 'ordered_pattern_list' | 'relation_list';
 
 type ConfigValue =
-  | string[]
-  | string
-  | Record<string, string>
-  | (readonly [string, string])[]
-  | SkillRelationSeed[];
+  string[] | string | Record<string, string> | (readonly [string, string])[] | SkillRelationSeed[];
 
 interface ConfigFieldDef {
   key: string;
@@ -187,7 +183,7 @@ const REGISTRY: readonly ConfigFieldDef[] = [
     key: 'greenhouse_boards',
     label: 'Greenhouse boards',
     description:
-      'Company board slugs to pull from Greenhouse\'s public, unauthenticated jobs feed (boards-api.greenhouse.io) - no API key needed. Find a company\'s slug in its careers URL, e.g. boards.greenhouse.io/<slug>.',
+      "Company board slugs to pull from Greenhouse's public, unauthenticated jobs feed (boards-api.greenhouse.io) - no API key needed. Find a company's slug in its careers URL, e.g. boards.greenhouse.io/<slug>.",
     type: 'string_list',
     defaultValue: () => DEFAULT_GREENHOUSE_BOARDS.map((b) => b.slug),
     get: () => getGreenhouseBoards().map((b) => b.slug),
@@ -197,7 +193,7 @@ const REGISTRY: readonly ConfigFieldDef[] = [
     key: 'lever_boards',
     label: 'Lever boards',
     description:
-      'Company board slugs to pull from Lever\'s public, unauthenticated postings feed (api.lever.co) - no API key needed. Find a company\'s slug in its careers URL, e.g. jobs.lever.co/<slug>.',
+      "Company board slugs to pull from Lever's public, unauthenticated postings feed (api.lever.co) - no API key needed. Find a company's slug in its careers URL, e.g. jobs.lever.co/<slug>.",
     type: 'string_list',
     defaultValue: () => DEFAULT_LEVER_BOARDS.map((b) => b.slug),
     get: () => getLeverBoards().map((b) => b.slug),
@@ -207,10 +203,9 @@ const REGISTRY: readonly ConfigFieldDef[] = [
     key: 'teamtailor_boards',
     label: 'Teamtailor boards',
     description:
-      'Career-site hostname -> display name for companies to pull from Teamtailor\'s public, unauthenticated jobs.json feed - no API key needed. The hostname is whatever domain the company\'s career page runs on (its own domain or a *.teamtailor.com subdomain).',
+      "Career-site hostname -> display name for companies to pull from Teamtailor's public, unauthenticated jobs.json feed - no API key needed. The hostname is whatever domain the company's career page runs on (its own domain or a *.teamtailor.com subdomain).",
     type: 'kv_map',
-    defaultValue: () =>
-      Object.fromEntries(DEFAULT_TEAMTAILOR_BOARDS.map((b) => [b.host, b.name])),
+    defaultValue: () => Object.fromEntries(DEFAULT_TEAMTAILOR_BOARDS.map((b) => [b.host, b.name])),
     get: () => Object.fromEntries(getTeamtailorBoards().map((b) => [b.host, b.name])),
     set: (value) => {
       const map = value as Record<string, string>;
@@ -280,7 +275,8 @@ function validate(field: ConfigFieldDef, value: unknown): ConfigValue {
     const duplicate = seenKeys.filter((key, i) => seenKeys.indexOf(key) !== i);
     if (missing.length > 0) throw new Error(`missing row(s) for: ${missing.join(', ')}`);
     if (unknown.length > 0) throw new Error(`unknown key(s): ${unknown.join(', ')}`);
-    if (duplicate.length > 0) throw new Error(`duplicate row(s) for: ${[...new Set(duplicate)].join(', ')}`);
+    if (duplicate.length > 0)
+      throw new Error(`duplicate row(s) for: ${[...new Set(duplicate)].join(', ')}`);
     return parsed;
   }
 
@@ -289,8 +285,10 @@ function validate(field: ConfigFieldDef, value: unknown): ConfigValue {
   return value.map((row, i) => {
     if (typeof row !== 'object' || row === null) throw new Error(`row ${i}: expected an object`);
     const { a, b, type, weight } = row as Record<string, unknown>;
-    if (typeof a !== 'string' || !a.trim()) throw new Error(`row ${i}: "a" must be a non-empty string`);
-    if (typeof b !== 'string' || !b.trim()) throw new Error(`row ${i}: "b" must be a non-empty string`);
+    if (typeof a !== 'string' || !a.trim())
+      throw new Error(`row ${i}: "a" must be a non-empty string`);
+    if (typeof b !== 'string' || !b.trim())
+      throw new Error(`row ${i}: "b" must be a non-empty string`);
     if (type !== 'equivalent' && type !== 'related') {
       throw new Error(`row ${i}: "type" must be "equivalent" or "related"`);
     }
@@ -312,11 +310,13 @@ export async function loadConfigFromDb(db: Kysely<JobDb>, ctx?: ApplyContext): P
       const parsed = JSON.parse(raw);
       // Startup load only restores in-process state - the DB already has
       // whatever `relation_list` previously applied, so skip re-applying it.
-      await field.set(validate(field, parsed), db, field.type === 'relation_list' ? undefined : ctx);
-    } catch (err) {
-      console.warn(
-        `Ignoring stored config for "${field.key}": ${(err as Error).message}`,
+      await field.set(
+        validate(field, parsed),
+        db,
+        field.type === 'relation_list' ? undefined : ctx,
       );
+    } catch (err) {
+      console.warn(`Ignoring stored config for "${field.key}": ${(err as Error).message}`);
     }
   }
 }

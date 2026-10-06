@@ -74,15 +74,11 @@ export function UploadCvsTab() {
       try {
         const candidate = await uploadCandidate(selected[i]);
         uploaded.push(candidate);
-        setCandidates((prev) =>
-          prev.map((c) => (c.id === placeholderId ? candidate : c)),
-        );
+        setCandidates((prev) => prev.map((c) => (c.id === placeholderId ? candidate : c)));
       } catch (err) {
         setCandidates((prev) =>
           prev.map((c) =>
-            c.id === placeholderId
-              ? { ...c, status: 'failed', error: (err as Error).message }
-              : c,
+            c.id === placeholderId ? { ...c, status: 'failed', error: (err as Error).message } : c,
           ),
         );
       }
@@ -97,10 +93,7 @@ export function UploadCvsTab() {
     setUploading(false);
   };
 
-  const handleResolveDuplicate = async (
-    id: string,
-    action: 'ignore' | 'replace',
-  ) => {
+  const handleResolveDuplicate = async (id: string, action: 'ignore' | 'replace') => {
     setResolvingId(id);
     setError(null);
     try {
@@ -132,9 +125,8 @@ export function UploadCvsTab() {
         <div className="cv-upload-info">
           <h2>Upload multiple CVs</h2>
           <p className="muted">
-            Select several PDF CVs at once. Each is sanitized and embedded
-            locally in turn, so a large batch takes a while - the list below
-            fills in as each one finishes.
+            Select several PDF CVs at once. Each is sanitized and embedded locally in turn, so a
+            large batch takes a while - the list below fills in as each one finishes.
           </p>
         </div>
         <div className="cv-upload-controls">
@@ -148,9 +140,7 @@ export function UploadCvsTab() {
         </div>
       </div>
 
-      {uploading && (
-        <p className="muted">Reading and sanitizing CVs locally...</p>
-      )}
+      {uploading && <p className="muted">Reading and sanitizing CVs locally...</p>}
       {error && (
         <div className="error" role="alert">
           {error}
@@ -165,9 +155,7 @@ export function UploadCvsTab() {
           removingId={removingId}
           onDelete={(id) => void handleDelete(id)}
           resolvingId={resolvingId}
-          onResolveDuplicate={(id, action) =>
-            void handleResolveDuplicate(id, action)
-          }
+          onResolveDuplicate={(id, action) => void handleResolveDuplicate(id, action)}
         />
       )}
 

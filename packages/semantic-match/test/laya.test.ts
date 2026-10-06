@@ -15,7 +15,7 @@ describe('createLayaClient', () => {
     global.fetch = originalFetch;
   });
 
-  it('normalizes Laya\'s ordinal fit score into 0-1 and stitches in generated reasoning', async () => {
+  it("normalizes Laya's ordinal fit score into 0-1 and stitches in generated reasoning", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: () =>
@@ -97,7 +97,10 @@ describe('createLayaClient', () => {
       ok: true,
       json: () =>
         Promise.resolve({
-          answers: { verdict: { choice: 'weak', confidence: 0.6 }, fit: { score: 0, confidence: 0.6 } },
+          answers: {
+            verdict: { choice: 'weak', confidence: 0.6 },
+            fit: { score: 0, confidence: 0.6 },
+          },
         }),
     });
     global.fetch = fetchMock as unknown as typeof fetch;

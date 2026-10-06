@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  createKysely,
-  runMigrations,
-  rollbackMigrations,
-  openSqlite,
-} from '../src/db';
+import { createKysely, runMigrations, rollbackMigrations, openSqlite } from '../src/db';
 import type { Kysely } from 'kysely';
 import type { JobDb } from '../src/schema';
 
@@ -26,10 +21,7 @@ describe('migrations', () => {
       const queryDb = db as unknown as Kysely<{
         kysely_migrations: { name: string };
       }>;
-      const tables = await queryDb
-        .selectFrom('kysely_migrations')
-        .select('name')
-        .execute();
+      const tables = await queryDb.selectFrom('kysely_migrations').select('name').execute();
       expect(tables.map((t) => t.name)).toContain('001-initial');
 
       const jobColumns = await db.introspection.getTables();
@@ -117,12 +109,8 @@ describe('migrations', () => {
 
       await rollbackMigrations(db);
       const afterSeenJobs = await db.introspection.getTables();
-      const userJobMarksAfterSeenRollback = afterSeenJobs.find(
-        (t) => t.name === 'user_job_marks',
-      );
-      expect(
-        userJobMarksAfterSeenRollback?.columns.some((c) => c.name === 'seen_at'),
-      ).toBe(false);
+      const userJobMarksAfterSeenRollback = afterSeenJobs.find((t) => t.name === 'user_job_marks');
+      expect(userJobMarksAfterSeenRollback?.columns.some((c) => c.name === 'seen_at')).toBe(false);
       expect(afterSeenJobs.map((t) => t.name)).toContain('skill_relations');
 
       await rollbackMigrations(db);

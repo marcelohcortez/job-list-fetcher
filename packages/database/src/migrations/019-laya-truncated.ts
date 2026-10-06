@@ -15,7 +15,9 @@ import type { JobDb } from '../schema';
  */
 export const layaTruncatedMigration: Migration = {
   async up(db: Kysely<JobDb>) {
-    await sql`ALTER TABLE laya_evaluations ADD COLUMN truncated INTEGER NOT NULL DEFAULT 0`.execute(db);
+    await sql`ALTER TABLE laya_evaluations ADD COLUMN truncated INTEGER NOT NULL DEFAULT 0`.execute(
+      db,
+    );
   },
 
   async down(_db: Kysely<JobDb>) {

@@ -61,9 +61,7 @@ describe('deduplicateSourceRecords', () => {
   });
 
   it('normalizes application URLs', () => {
-    expect(normalizeUrl('HTTPS://Example.com/jobs/42/')).toBe(
-      'https://example.com/jobs/42',
-    );
+    expect(normalizeUrl('HTTPS://Example.com/jobs/42/')).toBe('https://example.com/jobs/42');
   });
 
   it('matches equivalent postings from two sources with candidate confidence', () => {
@@ -92,9 +90,7 @@ describe('deduplicateSourceRecords', () => {
 
   it('is idempotent on repeated ingestion of the same record', () => {
     const r = makeRecord({ sourceJobId: 'j1' });
-    expect(deduplicateSourceRecords(r, r)).toEqual(
-      deduplicateSourceRecords(r, r),
-    );
+    expect(deduplicateSourceRecords(r, r)).toEqual(deduplicateSourceRecords(r, r));
   });
 
   it('does not flag unrelated postings', () => {

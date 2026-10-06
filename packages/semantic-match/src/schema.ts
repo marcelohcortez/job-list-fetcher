@@ -32,8 +32,7 @@ const ENGLISH_NORMALIZATION_NOTE =
 
 export const PROFILE_FIELD_DESCRIPTIONS = {
   title:
-    "The job title, or the candidate's most recent/target job title." +
-    ENGLISH_NORMALIZATION_NOTE,
+    "The job title, or the candidate's most recent/target job title." + ENGLISH_NORMALIZATION_NOTE,
   requiredSkills:
     'Hard/technical skills ONLY: named tools, programming languages, ' +
     'frameworks, platforms, certifications, or technical methodologies ' +
@@ -66,8 +65,7 @@ export const PROFILE_FIELD_DESCRIPTIONS = {
     'management", "relationship-building", "adaptability").' +
     ENGLISH_NORMALIZATION_NOTE,
   experienceProfile: 'Years of experience, seniority, or degree benchmarks.',
-  coreResponsibilities:
-    'Core tasks/responsibilities. Omit general corporate overhead text.',
+  coreResponsibilities: 'Core tasks/responsibilities. Omit general corporate overhead text.',
   candidateName: "The candidate's full name, read from the CV header.",
 } as const;
 
@@ -78,15 +76,9 @@ export const PROFILE_FIELD_DESCRIPTIONS = {
  */
 export const SanitizedProfileSchema = z.object({
   title: z.string().describe(PROFILE_FIELD_DESCRIPTIONS.title),
-  requiredSkills: z
-    .array(z.string())
-    .describe(PROFILE_FIELD_DESCRIPTIONS.requiredSkills),
-  softSkills: z
-    .array(z.string())
-    .describe(PROFILE_FIELD_DESCRIPTIONS.softSkills),
-  experienceProfile: z
-    .string()
-    .describe(PROFILE_FIELD_DESCRIPTIONS.experienceProfile),
+  requiredSkills: z.array(z.string()).describe(PROFILE_FIELD_DESCRIPTIONS.requiredSkills),
+  softSkills: z.array(z.string()).describe(PROFILE_FIELD_DESCRIPTIONS.softSkills),
+  experienceProfile: z.string().describe(PROFILE_FIELD_DESCRIPTIONS.experienceProfile),
   coreResponsibilities: z
     .array(z.string())
     .describe(PROFILE_FIELD_DESCRIPTIONS.coreResponsibilities),

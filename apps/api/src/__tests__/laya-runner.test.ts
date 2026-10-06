@@ -39,8 +39,12 @@ function pipelineWith(jobIds: string[], candidateIds: string[]): SemanticPipelin
     vectorStore: {
       getCandidateEmbedding: vi.fn().mockResolvedValue([0.1]),
       getJobEmbedding: vi.fn().mockResolvedValue([0.1]),
-      queryJobsForCandidate: vi.fn().mockResolvedValue(jobIds.map((id) => ({ id, similarity: 0.5 }))),
-      queryCandidatesForJob: vi.fn().mockResolvedValue(candidateIds.map((id) => ({ id, similarity: 0.5 }))),
+      queryJobsForCandidate: vi
+        .fn()
+        .mockResolvedValue(jobIds.map((id) => ({ id, similarity: 0.5 }))),
+      queryCandidatesForJob: vi
+        .fn()
+        .mockResolvedValue(candidateIds.map((id) => ({ id, similarity: 0.5 }))),
     },
   } as unknown as SemanticPipeline;
 }
@@ -95,11 +99,18 @@ describe('laya-runner role-category gate', () => {
     const evaluate = vi.fn().mockResolvedValue(evaluation);
     const client = { evaluate } as unknown as LayaClient;
 
-    await evaluateLayaForNewJob(db, pipelineWith([], [designer, engineer, unknown]), client, jobId, 'JOB', 10);
-
-    const evaluated = (await db.selectFrom('laya_evaluations').select('candidate_id').execute()).map(
-      (row) => row.candidate_id,
+    await evaluateLayaForNewJob(
+      db,
+      pipelineWith([], [designer, engineer, unknown]),
+      client,
+      jobId,
+      'JOB',
+      10,
     );
+
+    const evaluated = (
+      await db.selectFrom('laya_evaluations').select('candidate_id').execute()
+    ).map((row) => row.candidate_id);
     expect(evaluated.sort()).toEqual([engineer, unknown].sort());
     expect(evaluate).toHaveBeenCalledTimes(2);
     expect(evaluated).not.toContain(designer);
@@ -147,11 +158,18 @@ describe('laya-runner role-category gate', () => {
     const evaluate = vi.fn().mockResolvedValue(evaluation);
     const client = { evaluate } as unknown as LayaClient;
 
-    await evaluateLayaForNewCandidate(db, pipelineWith([engineeringJob, designJob], []), client, designer, 'CV', 10);
-
-    const evaluated = (await db.selectFrom('laya_evaluations').select('job_opening_id').execute()).map(
-      (row) => row.job_opening_id,
+    await evaluateLayaForNewCandidate(
+      db,
+      pipelineWith([engineeringJob, designJob], []),
+      client,
+      designer,
+      'CV',
+      10,
     );
+
+    const evaluated = (
+      await db.selectFrom('laya_evaluations').select('job_opening_id').execute()
+    ).map((row) => row.job_opening_id);
     expect(evaluated).toEqual([designJob]);
   });
 });

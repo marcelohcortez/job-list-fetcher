@@ -1,5 +1,4 @@
-export type JobStatus =
-  'active' | 'expired_grace_period' | 'closed' | 'unknown';
+export type JobStatus = 'active' | 'expired_grace_period' | 'closed' | 'unknown';
 export type WorkModel = 'remote' | 'hybrid' | 'onsite' | 'unknown';
 export type CanonicalKey = string;
 

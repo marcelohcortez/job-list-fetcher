@@ -1,10 +1,5 @@
 export { STOPWORDS } from './stopwords';
-export {
-  normalizeText,
-  tokenize,
-  termFrequencies,
-  containsPhrase,
-} from './tokenize';
+export { normalizeText, tokenize, termFrequencies, containsPhrase } from './tokenize';
 export { SKILL_PHRASES } from './skills';
 export {
   CvMatcher,

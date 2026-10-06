@@ -30,9 +30,7 @@ export const envSchema = z.object({
   LAYA_API_KEY: z.string().min(1).optional(),
   LAYA_TOP_K: z.coerce.number().int().positive().default(10),
   LAYA_WEIGHT: z.coerce.number().min(0).max(1).default(0.3),
-  NODE_ENV: z
-    .enum(['development', 'production', 'test'])
-    .default('development'),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -51,9 +49,7 @@ function withoutBlanks(
   return Object.fromEntries(entries);
 }
 
-export function loadEnv(
-  source: Record<string, string | undefined> = process.env,
-): Env {
+export function loadEnv(source: Record<string, string | undefined> = process.env): Env {
   return envSchema.parse(withoutBlanks(source));
 }
 

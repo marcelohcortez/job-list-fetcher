@@ -8,11 +8,7 @@ export interface ChromaConfig {
 export interface VectorStore {
   upsertJob(id: string, embedding: number[], document: string): Promise<void>;
   deleteJob(id: string): Promise<void>;
-  upsertCandidate(
-    id: string,
-    embedding: number[],
-    document: string,
-  ): Promise<void>;
+  upsertCandidate(id: string, embedding: number[], document: string): Promise<void>;
   deleteCandidate(id: string): Promise<void>;
   getCandidateEmbedding(id: string): Promise<number[] | null>;
   getJobEmbedding(id: string): Promise<number[] | null>;
@@ -25,13 +21,9 @@ export interface VectorStore {
     nResults?: number,
   ): Promise<Array<{ id: string; similarity: number }>>;
   upsertRolePhrase(id: string, embedding: number[], document: string): Promise<void>;
-  queryNearestRolePhrase(
-    embedding: number[],
-  ): Promise<{ id: string; similarity: number } | null>;
+  queryNearestRolePhrase(embedding: number[]): Promise<{ id: string; similarity: number } | null>;
   upsertSkill(id: string, embedding: number[], document: string): Promise<void>;
-  queryNearestSkill(
-    embedding: number[],
-  ): Promise<{ id: string; similarity: number } | null>;
+  queryNearestSkill(embedding: number[]): Promise<{ id: string; similarity: number } | null>;
 }
 
 const JOB_COLLECTION = 'job_openings';

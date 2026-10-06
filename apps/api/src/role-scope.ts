@@ -24,9 +24,7 @@ export async function seedTargetRolePhrases(
   vectorStore: VectorStore,
   embed: Embed,
 ): Promise<void> {
-  const known = new Set(
-    (await listTargetRolePhrases(db)).map((row) => row.normalized_phrase),
-  );
+  const known = new Set((await listTargetRolePhrases(db)).map((row) => row.normalized_phrase));
 
   for (const role of getTargetRoles()) {
     const normalizedPhrase = normalizePhrase(role);

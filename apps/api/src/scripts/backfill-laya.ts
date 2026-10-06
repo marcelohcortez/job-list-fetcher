@@ -78,7 +78,14 @@ async function main() {
   console.log(`Backfilling Laya for ${jobs.length} sanitized job(s)...`);
   for (const [index, job] of jobs.entries()) {
     if (!job.anchor_document) continue;
-    await evaluateLayaForNewJob(db, semantic, layaClient, job.job_opening_id, job.anchor_document, env.LAYA_TOP_K);
+    await evaluateLayaForNewJob(
+      db,
+      semantic,
+      layaClient,
+      job.job_opening_id,
+      job.anchor_document,
+      env.LAYA_TOP_K,
+    );
     if ((index + 1) % 10 === 0 || index === jobs.length - 1) {
       console.log(`  jobs [${index + 1}/${jobs.length}]`);
     }

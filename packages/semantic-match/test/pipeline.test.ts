@@ -1,9 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import {
-  processJobOpening,
-  processCandidate,
-  matchJobsForCandidate,
-} from '../src/pipeline';
+import { processJobOpening, processCandidate, matchJobsForCandidate } from '../src/pipeline';
 import type { SanitizerClient } from '../src/ollama';
 import type { VectorStore } from '../src/chroma';
 import type { CvRefactorClient } from '../src/refactor';
@@ -33,7 +29,9 @@ function fakeSanitizer(): SanitizerClient {
 
 function fakeCvRefactor(): CvRefactorClient {
   return {
-    refactorCv: vi.fn().mockImplementation((text: string) => Promise.resolve(`refactored: ${text}`)),
+    refactorCv: vi
+      .fn()
+      .mockImplementation((text: string) => Promise.resolve(`refactored: ${text}`)),
   };
 }
 
@@ -46,9 +44,7 @@ function fakeVectorStore(): VectorStore {
     getCandidateEmbedding: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
     getJobEmbedding: vi.fn().mockResolvedValue(null),
     queryCandidatesForJob: vi.fn().mockResolvedValue([]),
-    queryJobsForCandidate: vi
-      .fn()
-      .mockResolvedValue([{ id: 'job-1', similarity: 0.9 }]),
+    queryJobsForCandidate: vi.fn().mockResolvedValue([{ id: 'job-1', similarity: 0.9 }]),
     upsertRolePhrase: vi.fn().mockResolvedValue(undefined),
     queryNearestRolePhrase: vi.fn().mockResolvedValue(null),
     upsertSkill: vi.fn().mockResolvedValue(undefined),
@@ -101,9 +97,7 @@ describe('processCandidate', () => {
     await processCandidate(pipeline, 'cand-1', 'raw cv text');
 
     expect(cvRefactor.refactorCv).toHaveBeenCalledWith('raw cv text');
-    expect(sanitizer.sanitizeCandidate).toHaveBeenCalledWith(
-      'refactored: raw cv text',
-    );
+    expect(sanitizer.sanitizeCandidate).toHaveBeenCalledWith('refactored: raw cv text');
   });
 });
 
@@ -127,10 +121,7 @@ describe('matchJobsForCandidate', () => {
 
     const matches = await matchJobsForCandidate(pipeline, 'cand-1', 5);
 
-    expect(vectorStore.queryJobsForCandidate).toHaveBeenCalledWith(
-      [0.1, 0.2, 0.3],
-      5,
-    );
+    expect(vectorStore.queryJobsForCandidate).toHaveBeenCalledWith([0.1, 0.2, 0.3], 5);
     expect(matches).toEqual([{ id: 'job-1', similarity: 0.9 }]);
   });
 });

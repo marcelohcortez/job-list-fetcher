@@ -4,11 +4,11 @@
 **Date**: 2026-09-16
 **Author**: Claude Sonnet 5
 
-A Designer's CV scored 75% against Canonical's "Product Manager - AI" opening. Neither signal in the match score (ADR 0009's skill coverage, or whole-document semantic similarity) ever checks what *kind* of role the job and the candidate are for - this ADR adds that check as a third, independent discount on top of the existing blend.
+A Designer's CV scored 75% against Canonical's "Product Manager - AI" opening. Neither signal in the match score (ADR 0009's skill coverage, or whole-document semantic similarity) ever checks what _kind_ of role the job and the candidate are for - this ADR adds that check as a third, independent discount on top of the existing blend.
 
 **Context**:
 
-1. `TARGET_ROLES` (`packages/domain/src/target-roles.ts`) gates which *job* titles are ingested at all, but has no analogue on the *candidate* side - a CV is accepted regardless of what role it's for, and nothing about its title is ever compared against the job's.
+1. `TARGET_ROLES` (`packages/domain/src/target-roles.ts`) gates which _job_ titles are ingested at all, but has no analogue on the _candidate_ side - a CV is accepted regardless of what role it's for, and nothing about its title is ever compared against the job's.
 2. `blendScore` (`apps/api/src/routes/matches.ts`) blends required-skill coverage with whole-document semantic similarity. When a job has few or no discrete required skills - the Canonical posting was this kind of ad - the score leans on, or falls back entirely to, semantic similarity. Generic vocabulary shared across unrelated roles ("stakeholder," "product," "roadmap," "team," "user") sits close together in embedding space regardless of role, which is exactly the failure mode ADR 0009 documented for skills and never addressed at the role level.
 3. `skill_relations` (ADR 0010) can also over-credit across roles if a curated pair happens to span two different disciplines (e.g. a Designer's "Stakeholder Management" crediting a PM's "Customer-facing Experience" requirement) - curation reviews skill adjacency, not role compatibility.
 
@@ -22,7 +22,7 @@ A Designer's CV scored 75% against Canonical's "Product Manager - AI" opening. N
 **Considered Options**:
 
 - **Hard filter (drop the match entirely on category mismatch) instead of a multiplicative penalty.** Rejected: `categorizeRoleTitle` is a coarse keyword classifier, not infallible, and adjacent-but-not-identical categories (e.g. a Business Analyst CV against a Product Manager opening) are legitimate matches that a hard boundary would wrongly exclude. A steep discount achieves the same practical outcome - the match sinks below `MATCH_MIN_SIMILARITY` in the vast majority of cases - while staying recoverable if the classifier is wrong and the rest of the signal is otherwise very strong.
-- **Embedding-based role classification** (compare the candidate/job anchor document against a category-anchor embedding, argmax) instead of keyword patterns. Rejected for the same reason ADR 0010 rejected computed skill relations: unauditable, and the specific failure this ADR fixes is embedding similarity being *unreliable at exactly this granularity* - reusing the same mechanism to fix its own failure mode is circular. A keyword classifier is coarser but reviewable and debuggable from the pattern list alone.
+- **Embedding-based role classification** (compare the candidate/job anchor document against a category-anchor embedding, argmax) instead of keyword patterns. Rejected for the same reason ADR 0010 rejected computed skill relations: unauditable, and the specific failure this ADR fixes is embedding similarity being _unreliable at exactly this granularity_ - reusing the same mechanism to fix its own failure mode is circular. A keyword classifier is coarser but reviewable and debuggable from the pattern list alone.
 - **Only categorize jobs (reuse ingestion-time title scope), skip candidates.** Rejected - there was never a signal on the candidate side to compare against; this is the actual gap. Candidates are not restricted to `TARGET_ROLES` and never should be (CVs of any role can be uploaded), so their category has to be derived independently, not reused from job-side scope filtering.
 - **A single "compatible: yes/no" boolean instead of a numeric multiplier.** Rejected in favor of a configurable weight for the same reason `SKILL_OVERLAP_WEIGHT` is a weight and not a hard gate: lets the penalty be tuned (or disabled, at `1.0`) without a code change if it proves too aggressive in practice.
 

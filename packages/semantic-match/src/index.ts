@@ -1,14 +1,6 @@
 export { buildAnchorDocument } from './anchor';
-export {
-  SanitizedProfileSchema,
-  SanitizedJobSchema,
-  SanitizedCandidateSchema,
-} from './schema';
-export type {
-  SanitizedProfile,
-  SanitizedJob,
-  SanitizedCandidate,
-} from './schema';
+export { SanitizedProfileSchema, SanitizedJobSchema, SanitizedCandidateSchema } from './schema';
+export type { SanitizedProfile, SanitizedJob, SanitizedCandidate } from './schema';
 export { createOllamaSanitizer } from './ollama';
 export type { OllamaConfig, SanitizerClient } from './ollama';
 export { createOllamaCvRefactor } from './refactor';
@@ -29,8 +21,4 @@ export {
   matchJobsForCandidate,
   matchCandidatesForJob,
 } from './pipeline';
-export type {
-  SemanticPipeline,
-  ProcessedJob,
-  ProcessedCandidate,
-} from './pipeline';
+export type { SemanticPipeline, ProcessedJob, ProcessedCandidate } from './pipeline';

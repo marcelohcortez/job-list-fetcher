@@ -86,16 +86,16 @@ Classify every prospective statement as one of:
 
 Use this standard as the benchmark. Adapt the weighting only if a target role or local market makes a different emphasis necessary.
 
-| Dimension | Weight | What “ideal” means |
-|---|---:|---|
-| Truthfulness and chronology | 20 | Titles, employers, dates, scope, and claims are consistent, credible, and traceable to source evidence. |
-| Target-role positioning | 15 | The target role, relevant domain, and differentiating strengths are visible immediately. |
-| Evidence and impact | 15 | Recent relevant roles show concrete contribution, outcomes, scale, constraints, or responsibility without fabricated metrics. |
-| Relevance and prioritization | 10 | The most relevant evidence appears early; old or weak details are condensed. |
-| Skills credibility | 10 | Skills are grouped, relevant, evidence-backed, and demonstrated in experience. |
-| Readability and recruiter scanability | 10 | Clear hierarchy, concise bullets, consistent tense and dates, plain language, and low repetition. |
-| ATS and technical parseability | 10 | Conventional headings, simple one-column reading order, standard dates, no essential graphics/tables/text boxes, and accessible text. |
-| Completeness and professional hygiene | 10 | Contact/link quality, education/certifications where relevant, no obvious omissions, and appropriate privacy. |
+| Dimension                             | Weight | What “ideal” means                                                                                                                    |
+| ------------------------------------- | -----: | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Truthfulness and chronology           |     20 | Titles, employers, dates, scope, and claims are consistent, credible, and traceable to source evidence.                               |
+| Target-role positioning               |     15 | The target role, relevant domain, and differentiating strengths are visible immediately.                                              |
+| Evidence and impact                   |     15 | Recent relevant roles show concrete contribution, outcomes, scale, constraints, or responsibility without fabricated metrics.         |
+| Relevance and prioritization          |     10 | The most relevant evidence appears early; old or weak details are condensed.                                                          |
+| Skills credibility                    |     10 | Skills are grouped, relevant, evidence-backed, and demonstrated in experience.                                                        |
+| Readability and recruiter scanability |     10 | Clear hierarchy, concise bullets, consistent tense and dates, plain language, and low repetition.                                     |
+| ATS and technical parseability        |     10 | Conventional headings, simple one-column reading order, standard dates, no essential graphics/tables/text boxes, and accessible text. |
+| Completeness and professional hygiene |     10 | Contact/link quality, education/certifications where relevant, no obvious omissions, and appropriate privacy.                         |
 
 The result is a score out of 100. It measures closeness to this editorial standard, not the candidate's talent, employability, or likelihood of receiving an offer.
 
@@ -377,6 +377,7 @@ Use this structure:
 ## Experience
 
 ### [Verified Job Title] — [Verified Employer]
+
 [Verified location, if present] | [Verified dates]
 
 [Role overview]
@@ -466,8 +467,8 @@ Use this response after file generation:
 Your CV is currently **[baseline_score]% close to the editorial ideal used by this skill**. This assesses the document, not your professional value or likelihood of being hired.
 
 | Dimension | Before | After | Rationale |
-|---|---:|---:|---|
-| ... | ... | ... | ... |
+| --------- | -----: | ----: | --------- |
+| ...       |    ... |   ... | ...       |
 
 ## Planned and completed changes
 

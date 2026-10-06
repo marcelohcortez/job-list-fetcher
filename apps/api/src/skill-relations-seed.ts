@@ -37,15 +37,35 @@ export interface SkillRelationSeed {
  */
 export const DEFAULT_SKILL_RELATION_SEEDS: readonly SkillRelationSeed[] = [
   // Customer-facing / relationship-management cluster
-  { a: 'Stakeholder Management', b: 'Client Relationship Management', type: 'equivalent', weight: 0.9 },
+  {
+    a: 'Stakeholder Management',
+    b: 'Client Relationship Management',
+    type: 'equivalent',
+    weight: 0.9,
+  },
   { a: 'Stakeholder Management', b: 'Customer-facing Experience', type: 'related', weight: 0.7 },
-  { a: 'Client Relationship Management', b: 'Customer-facing Experience', type: 'equivalent', weight: 0.9 },
+  {
+    a: 'Client Relationship Management',
+    b: 'Customer-facing Experience',
+    type: 'equivalent',
+    weight: 0.9,
+  },
   { a: 'Account Management', b: 'Client Relationship Management', type: 'related', weight: 0.7 },
   { a: 'Relationship Building', b: 'Stakeholder Management', type: 'equivalent', weight: 0.9 },
   { a: 'Relationship Building', b: 'Customer-facing Experience', type: 'related', weight: 0.7 },
-  { a: 'Cross-functional Communication', b: 'Stakeholder Management', type: 'related', weight: 0.6 },
+  {
+    a: 'Cross-functional Communication',
+    b: 'Stakeholder Management',
+    type: 'related',
+    weight: 0.6,
+  },
   { a: 'Customer Success', b: 'Customer-facing Experience', type: 'equivalent', weight: 0.9 },
-  { a: 'Technical Account Management', b: 'Client Relationship Management', type: 'related', weight: 0.6 },
+  {
+    a: 'Technical Account Management',
+    b: 'Client Relationship Management',
+    type: 'related',
+    weight: 0.6,
+  },
 
   // Sales/solutions engineering cluster
   { a: 'Presales', b: 'Sales Engineering', type: 'equivalent', weight: 0.9 },
@@ -74,8 +94,18 @@ export const DEFAULT_SKILL_RELATION_SEEDS: readonly SkillRelationSeed[] = [
   // vocabulary rather than fixed by further prompt tuning - see this file's
   // top comment and ADR 0009 on why curated relations beat computed
   // skill-level matching here.
-  { a: 'Understanding of testing practices and software quality principles', b: 'Testing practices', type: 'equivalent', weight: 0.95 },
-  { a: 'Experience with testing practices', b: 'Testing practices', type: 'equivalent', weight: 0.95 },
+  {
+    a: 'Understanding of testing practices and software quality principles',
+    b: 'Testing practices',
+    type: 'equivalent',
+    weight: 0.95,
+  },
+  {
+    a: 'Experience with testing practices',
+    b: 'Testing practices',
+    type: 'equivalent',
+    weight: 0.95,
+  },
   { a: 'Software quality principles', b: 'Testing practices', type: 'equivalent', weight: 0.9 },
   // Holding a specific test tool/discipline is treated as practical evidence
   // of "testing practices" generally - 'related' rather than 'equivalent'
@@ -93,20 +123,80 @@ export const DEFAULT_SKILL_RELATION_SEEDS: readonly SkillRelationSeed[] = [
   // per-phrasing seed rows are needed here - only the non-CI/CD-worded
   // adjacency stays.
   { a: 'Familiarity with GitLab CI/CD pipelines', b: 'GitLab', type: 'related', weight: 0.6 },
-  { a: 'Experience with GitHub Workflows and GitHub Actions', b: 'CI/CD', type: 'equivalent', weight: 0.8 },
+  {
+    a: 'Experience with GitHub Workflows and GitHub Actions',
+    b: 'CI/CD',
+    type: 'equivalent',
+    weight: 0.8,
+  },
   { a: 'Experience with Shell', b: 'Bash', type: 'equivalent', weight: 0.85 },
-  { a: 'Solid understanding of relational database fundamentals', b: 'Relational databases', type: 'equivalent', weight: 0.9 },
-  { a: 'Solid understanding of relational database fundamentals', b: 'SQL', type: 'related', weight: 0.7 },
-  { a: 'Solid understanding of the Linux system architecture', b: 'Linux', type: 'equivalent', weight: 0.85 },
+  {
+    a: 'Solid understanding of relational database fundamentals',
+    b: 'Relational databases',
+    type: 'equivalent',
+    weight: 0.9,
+  },
+  {
+    a: 'Solid understanding of relational database fundamentals',
+    b: 'SQL',
+    type: 'related',
+    weight: 0.7,
+  },
+  {
+    a: 'Solid understanding of the Linux system architecture',
+    b: 'Linux',
+    type: 'equivalent',
+    weight: 0.85,
+  },
   { a: 'Experience with RHEL and RPM-based deployments', b: 'Linux', type: 'related', weight: 0.6 },
-  { a: 'Experience with database technologies, preferably SQL and graph databases', b: 'SQL', type: 'related', weight: 0.6 },
-  { a: 'Understanding of network protocols such as IPv4, IPv6, UDP, TCP, TLS and HTTP', b: 'Networking', type: 'related', weight: 0.6 },
-  { a: 'Experience with at least one container management/orchestration tool (e.g. Docker, Kubernetes, etc.)', b: 'Docker', type: 'related', weight: 0.6 },
-  { a: 'Experience with at least one container management/orchestration tool (e.g. Docker, Kubernetes, etc.)', b: 'Kubernetes', type: 'related', weight: 0.6 },
-  { a: 'Experience with JavaScript and WebAssembly', b: 'JavaScript', type: 'related', weight: 0.6 },
-  { a: 'Experience with REST APIs, asynchronous processing and integration patterns', b: 'API design', type: 'related', weight: 0.5 },
-  { a: 'Hands-on experience building scalable, maintainable APIs', b: 'API design', type: 'related', weight: 0.5 },
-  { a: 'Experience with server-side application development', b: 'Backend Development', type: 'equivalent', weight: 0.85 },
+  {
+    a: 'Experience with database technologies, preferably SQL and graph databases',
+    b: 'SQL',
+    type: 'related',
+    weight: 0.6,
+  },
+  {
+    a: 'Understanding of network protocols such as IPv4, IPv6, UDP, TCP, TLS and HTTP',
+    b: 'Networking',
+    type: 'related',
+    weight: 0.6,
+  },
+  {
+    a: 'Experience with at least one container management/orchestration tool (e.g. Docker, Kubernetes, etc.)',
+    b: 'Docker',
+    type: 'related',
+    weight: 0.6,
+  },
+  {
+    a: 'Experience with at least one container management/orchestration tool (e.g. Docker, Kubernetes, etc.)',
+    b: 'Kubernetes',
+    type: 'related',
+    weight: 0.6,
+  },
+  {
+    a: 'Experience with JavaScript and WebAssembly',
+    b: 'JavaScript',
+    type: 'related',
+    weight: 0.6,
+  },
+  {
+    a: 'Experience with REST APIs, asynchronous processing and integration patterns',
+    b: 'API design',
+    type: 'related',
+    weight: 0.5,
+  },
+  {
+    a: 'Hands-on experience building scalable, maintainable APIs',
+    b: 'API design',
+    type: 'related',
+    weight: 0.5,
+  },
+  {
+    a: 'Experience with server-side application development',
+    b: 'Backend Development',
+    type: 'equivalent',
+    weight: 0.85,
+  },
 
   // Specific RDBMS vs. generic requirement phrasing - a job asking for
   // "relational databases" generically is satisfied by naming any specific

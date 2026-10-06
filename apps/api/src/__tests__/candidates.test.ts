@@ -108,10 +108,7 @@ describe('POST /candidates', () => {
   it('rejects non-PDF uploads', async () => {
     const app = testApp(fakeSemantic());
     const form = new FormData();
-    form.append(
-      'file',
-      new File(['not a pdf'], 'notes.txt', { type: 'text/plain' }),
-    );
+    form.append('file', new File(['not a pdf'], 'notes.txt', { type: 'text/plain' }));
     const res = await app.request('/api/candidates', { method: 'POST', body: form });
     expect(res.status).toBe(400);
   });
@@ -208,14 +205,11 @@ describe('duplicate candidate names', () => {
       await app.request('/api/candidates', { method: 'POST', body: form2 })
     ).json();
 
-    const res = await app.request(
-      `/api/candidates/${second.data.id}/resolve-duplicate`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'ignore' }),
-      },
-    );
+    const res = await app.request(`/api/candidates/${second.data.id}/resolve-duplicate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'ignore' }),
+    });
     expect(res.status).toBe(200);
     expect((await res.json()).data.deleted).toBe(second.data.id);
 
@@ -240,21 +234,16 @@ describe('duplicate candidate names', () => {
       await app.request('/api/candidates', { method: 'POST', body: form2 })
     ).json();
 
-    const res = await app.request(
-      `/api/candidates/${second.data.id}/resolve-duplicate`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'replace' }),
-      },
-    );
+    const res = await app.request(`/api/candidates/${second.data.id}/resolve-duplicate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'replace' }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.id).toBe(second.data.id);
     expect(body.data.status).toBe('sanitized');
-    expect(semantic.vectorStore.deleteCandidate).toHaveBeenCalledWith(
-      first.data.id,
-    );
+    expect(semantic.vectorStore.deleteCandidate).toHaveBeenCalledWith(first.data.id);
 
     const list = await (await app.request('/api/candidates')).json();
     expect(list.data).toHaveLength(1);
@@ -276,8 +265,6 @@ describe('DELETE /candidates/:id', () => {
       method: 'DELETE',
     });
     expect((await res.json()).data.deleted).toBe(true);
-    expect(semantic.vectorStore.deleteCandidate).toHaveBeenCalledWith(
-      created.data.id,
-    );
+    expect(semantic.vectorStore.deleteCandidate).toHaveBeenCalledWith(created.data.id);
   });
 });

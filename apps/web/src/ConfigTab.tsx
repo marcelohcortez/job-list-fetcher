@@ -48,14 +48,17 @@ function textToValue(type: ConfigField['type'], text: string): ConfigFieldValue 
     case 'ordered_pattern_list':
       return nonEmpty.map((line) => {
         const i = line.indexOf(':');
-        if (i === -1) throw new Error(`Line "${line}" is missing ":" (expected "category: pattern").`);
+        if (i === -1)
+          throw new Error(`Line "${line}" is missing ":" (expected "category: pattern").`);
         return [line.slice(0, i).trim(), line.slice(i + 1).trim()] as [string, string];
       });
     case 'relation_list':
       return nonEmpty.map((line) => {
         const parts = line.split('|').map((p) => p.trim());
         if (parts.length !== 4) {
-          throw new Error(`Line "${line}" must have 4 parts separated by "|": a | b | type | weight.`);
+          throw new Error(
+            `Line "${line}" must have 4 parts separated by "|": a | b | type | weight.`,
+          );
         }
         const [a, b, rawType, weightText] = parts;
         if (rawType !== 'equivalent' && rawType !== 'related') {
@@ -130,7 +133,13 @@ function ConfigBox({
   };
 
   const rows =
-    field.type === 'regex' ? 3 : field.type === 'kv_map' ? 4 : field.type === 'relation_list' ? 14 : 10;
+    field.type === 'regex'
+      ? 3
+      : field.type === 'kv_map'
+        ? 4
+        : field.type === 'relation_list'
+          ? 14
+          : 10;
   const fieldHint = hint(field.type);
 
   return (

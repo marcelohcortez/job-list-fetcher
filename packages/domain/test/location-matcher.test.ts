@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  normalizeLocation,
-  canonicalizeLocation,
-  matchLocations,
-} from '../src/location-matcher';
+import { normalizeLocation, canonicalizeLocation, matchLocations } from '../src/location-matcher';
 
 describe('location matcher', () => {
   it('normalizes accents correctly', () => {

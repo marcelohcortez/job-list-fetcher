@@ -16,7 +16,7 @@ An interactive Claude Code skill, `cv-refactor` (`.claude/skills/cv-refactor/SKI
 **Considered Options**:
 
 - **Invoke the full interactive skill from the API route.** Rejected — the skill assumes an interactive Claude session (approval pauses, six generated deliverables) and the ingestion path is a headless Node process calling local Ollama only; there is no Claude model available inside that request.
-- **Gate on the baseline (pre-refactor) score instead of the post-refactor score.** Rejected per explicit user instruction — the automated rewrite is expected to be able to lift a mediocre source CV over the bar; only a CV that still scores low *after* the model's best rewrite attempt should be turned away.
+- **Gate on the baseline (pre-refactor) score instead of the post-refactor score.** Rejected per explicit user instruction — the automated rewrite is expected to be able to lift a mediocre source CV over the bar; only a CV that still scores low _after_ the model's best rewrite attempt should be turned away.
 - **Silently drop rejected CVs instead of failing them visibly.** Rejected — the user asked for a warning message directing the candidate back to the manual skill, and the `candidates` table already has a `failed`/`error` status built for exactly this.
 
 **Consequences**:
@@ -24,4 +24,4 @@ An interactive Claude Code skill, `cv-refactor` (`.claude/skills/cv-refactor/SKI
 - **Pro**: Every CV that reaches Chroma has passed through the same clarity/ATS-alignment rewrite the manual skill would apply, using the existing injected-client testing pattern (`CvRefactorClient` is fully mockable, matching `SanitizerClient`/`VectorStore`).
 - **Pro**: No new environment variables — the refactor client reuses `OLLAMA_HOST`/`OLLAMA_CHAT_MODEL`.
 - **Con**: `processCandidate` now makes two sequential Ollama chat calls (refactor, score) instead of one, before the existing sanitize+embed calls — slower per-candidate ingestion, and a candidate can be rejected purely because the local chat model's rewrite/scoring pass underperforms, not because their underlying experience is weak. An earlier revision also scored the raw CV as a reported-only baseline; that third call was removed since nothing consumed the number and CPU-only Ollama inference makes every extra sequential call costly (minutes per call, see the ingestion-latency incident this ADR's blast radius touches).
-- **Con**: The automated score is a heuristic single-model judgment, not the full multi-dimension scorecard the interactive skill produces; a rejected candidate has no visibility into *why* beyond the two numeric scores in the error message.
+- **Con**: The automated score is a heuristic single-model judgment, not the full multi-dimension scorecard the interactive skill produces; a rejected candidate has no visibility into _why_ beyond the two numeric scores in the error message.

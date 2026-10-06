@@ -23,7 +23,9 @@ let db: Kysely<JobDb>;
 const originalRoles = [...getTargetRoles()];
 const originalLocationSynonyms = { ...getLocationSynonyms() };
 const originalCategoryPatterns = getCategoryPatternSources().map((row) => [...row] as typeof row);
-const originalTitleLevelPatterns = getTitleLevelPatternSources().map((row) => [...row] as typeof row);
+const originalTitleLevelPatterns = getTitleLevelPatternSources().map(
+  (row) => [...row] as typeof row,
+);
 const originalCiCdPattern = getCiCdTokenPattern();
 const originalSkillRelationSeeds = getSkillRelationSeeds().map((s) => ({ ...s }));
 
@@ -165,9 +167,9 @@ describe('role_category_patterns (ordered_pattern_list)', () => {
       body: JSON.stringify({ value: edited }),
     });
     expect(res.status).toBe(200);
-    expect(
-      getCategoryPatternSources().find(([c]) => c === 'design')?.[1],
-    ).toBe('\\b(designer|ux|ui)\\b');
+    expect(getCategoryPatternSources().find(([c]) => c === 'design')?.[1]).toBe(
+      '\\b(designer|ux|ui)\\b',
+    );
   });
 
   it('rejects a list missing a required category', async () => {
@@ -210,9 +212,9 @@ describe('seniority_patterns (ordered_pattern_list)', () => {
       body: JSON.stringify({ value: edited }),
     });
     expect(res.status).toBe(200);
-    expect(
-      getTitleLevelPatternSources().find(([l]) => l === 'junior')?.[1],
-    ).toBe('\\b(junior|jr|graduate)\\b');
+    expect(getTitleLevelPatternSources().find(([l]) => l === 'junior')?.[1]).toBe(
+      '\\b(junior|jr|graduate)\\b',
+    );
   });
 });
 
@@ -240,7 +242,9 @@ describe('skill_relation_seeds (relation_list)', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.value).toEqual([{ a: 'Foo', b: 'Bar', type: 'equivalent', weight: 0.9 }]);
-    expect(getSkillRelationSeeds()).toEqual([{ a: 'Foo', b: 'Bar', type: 'equivalent', weight: 0.9 }]);
+    expect(getSkillRelationSeeds()).toEqual([
+      { a: 'Foo', b: 'Bar', type: 'equivalent', weight: 0.9 },
+    ]);
   });
 
   it('rejects an out-of-range weight', async () => {

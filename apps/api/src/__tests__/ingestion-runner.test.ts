@@ -60,10 +60,7 @@ describe('runIngestion embedJob hook', () => {
     expect(result.status).toBe('success');
     expect(result.counts.created).toBe(1);
 
-    const row = await db
-      .selectFrom('job_embeddings')
-      .selectAll()
-      .executeTakeFirst();
+    const row = await db.selectFrom('job_embeddings').selectAll().executeTakeFirst();
     expect(row?.status).toBe('failed');
     expect(row?.error).toBe('ollama down');
   });
@@ -90,8 +87,7 @@ describe('runIngestion embedJob hook', () => {
   it('falls back to the regex title check and keeps ingesting later adapters when isTitleInScope throws', async () => {
     const jobtech: SourceAdapter = {
       name: 'jobtech',
-      fetchJobs: () =>
-        Promise.resolve([record({ id: 'rec-jobtech', sourceName: 'jobtech' })]),
+      fetchJobs: () => Promise.resolve([record({ id: 'rec-jobtech', sourceName: 'jobtech' })]),
     };
     const greenhouse: SourceAdapter = {
       name: 'greenhouse',
@@ -117,8 +113,6 @@ describe('runIngestion embedJob hook', () => {
 
     expect(result.status).toBe('success');
     expect(result.counts.created).toBe(2);
-    expect(
-      result.warnings.some((w) => w.includes('title scope check failed')),
-    ).toBe(true);
+    expect(result.warnings.some((w) => w.includes('title scope check failed'))).toBe(true);
   });
 });

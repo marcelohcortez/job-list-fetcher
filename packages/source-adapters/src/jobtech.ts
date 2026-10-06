@@ -1,12 +1,6 @@
 import type { SourceRecord } from '@job-fetcher/domain';
 import { SourceRecordSchema } from '@job-fetcher/domain';
-import {
-  asRecord,
-  pick,
-  pickDate,
-  pickString,
-  type AdapterOptions,
-} from './base';
+import { asRecord, pick, pickDate, pickString, type AdapterOptions } from './base';
 import { stripHtml } from './boards';
 
 export interface JobTechAdapterOptions extends AdapterOptions {
@@ -35,15 +29,11 @@ export class JobTechDevAdapter {
   private readonly queries: string[];
   private readonly limit: number;
   private readonly rateLimitMs: number;
-  private readonly fetcher: (
-    url: string,
-    init?: RequestInit,
-  ) => Promise<Response>;
+  private readonly fetcher: (url: string, init?: RequestInit) => Promise<Response>;
 
   constructor(options: JobTechAdapterOptions = {}) {
     this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
-    this.municipalityCode =
-      options.municipalityCode ?? JOBTECH_DEFAULT_MUNICIPALITY_CODE;
+    this.municipalityCode = options.municipalityCode ?? JOBTECH_DEFAULT_MUNICIPALITY_CODE;
     this.queries = options.queries ?? JOBTECH_DEFAULT_QUERIES;
     this.limit = options.limit ?? 100;
     this.rateLimitMs = options.rateLimitMs ?? 100;
@@ -73,12 +63,9 @@ export class JobTechDevAdapter {
       limit: String(this.limit),
       offset: '0',
     });
-    const response = await this.fetcher(
-      `${this.baseUrl}/search?${params.toString()}`,
-      {
-        headers: { Accept: 'application/json' },
-      },
-    );
+    const response = await this.fetcher(`${this.baseUrl}/search?${params.toString()}`, {
+      headers: { Accept: 'application/json' },
+    });
     if (!response.ok) {
       throw new Error(`JobTech Dev request failed (${response.status})`);
     }
@@ -91,16 +78,12 @@ export class JobTechDevAdapter {
       const record = this.toSourceRecord(job, id);
       const parsed = SourceRecordSchema.safeParse(record);
       if (parsed.success) records.push(parsed.data as SourceRecord);
-      else
-        throw new Error(`Invalid JobTech Dev record: ${parsed.error.message}`);
+      else throw new Error(`Invalid JobTech Dev record: ${parsed.error.message}`);
     }
     return records;
   }
 
-  private toSourceRecord(
-    job: Record<string, unknown>,
-    id: unknown,
-  ): SourceRecord {
+  private toSourceRecord(job: Record<string, unknown>, id: unknown): SourceRecord {
     const employer = asRecord(pick(job, 'employer'));
     const address = asRecord(pick(job, 'workplace_address'));
     const application = asRecord(pick(job, 'application_details'));
@@ -112,15 +95,9 @@ export class JobTechDevAdapter {
       title: pickString(job, 'headline'),
       company: pickString(employer, 'name', 'workplace'),
       location: pickString(address, 'municipality', 'city'),
-      description:
-        description.text != null
-          ? stripHtml(pickString(description, 'text'))
-          : null,
+      description: description.text != null ? stripHtml(pickString(description, 'text')) : null,
       url: pickString(job, 'webpage_url', 'url'),
-      applicationUrl:
-        pick(application, 'url') != null
-          ? pickString(application, 'url')
-          : null,
+      applicationUrl: pick(application, 'url') != null ? pickString(application, 'url') : null,
       deadline: pickDate(job, 'application_deadline'),
       status: 'active',
       rawPayload: job,

@@ -167,10 +167,7 @@ export async function triggerIngestion(): Promise<IngestionRun> {
   return body.data;
 }
 
-export async function setJobMark(
-  id: string,
-  mark: JobMark | null,
-): Promise<JobMark | null> {
+export async function setJobMark(id: string, mark: JobMark | null): Promise<JobMark | null> {
   const res = await fetch(`/api/jobs/${id}/mark`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -178,17 +175,12 @@ export async function setJobMark(
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(
-      body?.error ?? `Failed to update mark (HTTP ${res.status})`,
-    );
+    throw new Error(body?.error ?? `Failed to update mark (HTTP ${res.status})`);
   }
   return body.data.userMark;
 }
 
-export async function setJobSeen(
-  id: string,
-  seen: boolean,
-): Promise<string | null> {
+export async function setJobSeen(id: string, seen: boolean): Promise<string | null> {
   const res = await fetch(`/api/jobs/${id}/seen`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -196,17 +188,12 @@ export async function setJobSeen(
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(
-      body?.error ?? `Failed to update seen status (HTTP ${res.status})`,
-    );
+    throw new Error(body?.error ?? `Failed to update seen status (HTTP ${res.status})`);
   }
   return body.data.seenAt;
 }
 
-export async function setJobSentCvs(
-  id: string,
-  candidateIds: string[],
-): Promise<string[]> {
+export async function setJobSentCvs(id: string, candidateIds: string[]): Promise<string[]> {
   const res = await fetch(`/api/jobs/${id}/sent-cvs`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -214,9 +201,7 @@ export async function setJobSentCvs(
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(
-      body?.error ?? `Failed to update sent CVs (HTTP ${res.status})`,
-    );
+    throw new Error(body?.error ?? `Failed to update sent CVs (HTTP ${res.status})`);
   }
   return body.data.sentCvIds;
 }
@@ -245,9 +230,7 @@ export async function uploadCandidates(files: File[]): Promise<Candidate[]> {
   const res = await fetch('/api/candidates/batch', { method: 'POST', body: form });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(
-      body?.error ?? `Failed to upload CVs (HTTP ${res.status})`,
-    );
+    throw new Error(body?.error ?? `Failed to upload CVs (HTTP ${res.status})`);
   }
   return body.data
     .filter((r: { data?: Candidate }) => r.data)
@@ -270,19 +253,13 @@ export async function resolveDuplicateCandidate(
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(
-      body?.error ?? `Failed to resolve duplicate CV (HTTP ${res.status})`,
-    );
+    throw new Error(body?.error ?? `Failed to resolve duplicate CV (HTTP ${res.status})`);
   }
   return body.data?.deleted ? null : body.data;
 }
 
 export type ConfigFieldType =
-  | 'string_list'
-  | 'regex'
-  | 'kv_map'
-  | 'ordered_pattern_list'
-  | 'relation_list';
+  'string_list' | 'regex' | 'kv_map' | 'ordered_pattern_list' | 'relation_list';
 
 export interface SkillRelationSeed {
   a: string;
@@ -292,11 +269,7 @@ export interface SkillRelationSeed {
 }
 
 export type ConfigFieldValue =
-  | string[]
-  | string
-  | Record<string, string>
-  | [string, string][]
-  | SkillRelationSeed[];
+  string[] | string | Record<string, string> | [string, string][] | SkillRelationSeed[];
 
 export interface ConfigField {
   key: string;
@@ -316,10 +289,7 @@ export async function fetchConfig(): Promise<ConfigField[]> {
   return body.data;
 }
 
-export async function updateConfig(
-  key: string,
-  value: ConfigFieldValue,
-): Promise<ConfigField> {
+export async function updateConfig(key: string, value: ConfigFieldValue): Promise<ConfigField> {
   const res = await fetch(`/api/config/${key}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -347,9 +317,7 @@ export async function fetchAllMatches(): Promise<CandidateMatches[]> {
   const res = await fetch('/api/matches');
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(
-      body?.error ?? `Failed to load matches (HTTP ${res.status})`,
-    );
+    throw new Error(body?.error ?? `Failed to load matches (HTTP ${res.status})`);
   }
   return body.data;
 }

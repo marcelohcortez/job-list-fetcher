@@ -8,7 +8,7 @@ Amends [ADR 0013](0013-remove-cv-refactor-rewrite-step.md), reversing its decisi
 
 **Context**:
 
-Explicit user correction after ADR 0013 landed: the CV-refactor step has value (ATS-friendly rewriting) and should stay. The user's framing, precisely: *"I just didn't want it to remove any duplicates before putting the data in the vector DB... refactoring the CV yes, removing duplicates, no. When should duplicates be removed? When inserting the data in the DB."*
+Explicit user correction after ADR 0013 landed: the CV-refactor step has value (ATS-friendly rewriting) and should stay. The user's framing, precisely: _"I just didn't want it to remove any duplicates before putting the data in the vector DB... refactoring the CV yes, removing duplicates, no. When should duplicates be removed? When inserting the data in the DB."_
 
 This reframes ADR 0013's diagnosis correctly. The observed bug (a CV's 6 "Git" mentions collapsing to 1 during rewrite, then the remaining one being dropped by the sanitizer) was really two separate defects layered together:
 

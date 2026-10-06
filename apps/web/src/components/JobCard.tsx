@@ -32,9 +32,7 @@ function candidateLabel(candidate: Candidate): string {
 }
 
 function sortedByLabel(candidates: Candidate[]): Candidate[] {
-  return [...candidates].sort((a, b) =>
-    candidateLabel(a).localeCompare(candidateLabel(b)),
-  );
+  return [...candidates].sort((a, b) => candidateLabel(a).localeCompare(candidateLabel(b)));
 }
 
 const VISIBLE_SKILL_CAP = 6;
@@ -133,18 +131,10 @@ function SkillBreakdown({
   return (
     <div className="skill-breakdown">
       {matchedSkills && matchedSkills.length > 0 && (
-        <SkillChipGroup
-          label="Matched skills"
-          skills={matchedSkills}
-          variant="matched"
-        />
+        <SkillChipGroup label="Matched skills" skills={matchedSkills} variant="matched" />
       )}
       {missingSkills && missingSkills.length > 0 && (
-        <SkillChipGroup
-          label="Missing skills"
-          skills={missingSkills}
-          variant="missing"
-        />
+        <SkillChipGroup label="Missing skills" skills={missingSkills} variant="missing" />
       )}
     </div>
   );
@@ -199,20 +189,14 @@ export function JobCard({
     <li className={job.userMark === 'dead' ? 'job job-dead' : job.seenAt ? 'job job-seen' : 'job'}>
       <div className="job-head">
         <h2>{job.title}</h2>
-        {job.userMark === 'dead' && (
-          <span className="status status-dead">Dead</span>
-        )}
-        {job.userMark !== 'dead' && job.seenAt && (
-          <span className="status status-seen">Seen</span>
-        )}
+        {job.userMark === 'dead' && <span className="status status-dead">Dead</span>}
+        {job.userMark !== 'dead' && job.seenAt && <span className="status status-seen">Seen</span>}
       </div>
       <div className="meta">
         <span className="company">{job.companyName}</span>
         {job.locationText && <span>{job.locationText}</span>}
         <span className="source">{job.sourceName}</span>
-        {job.publishedAt && (
-          <span>Published {formatDate(job.publishedAt)}</span>
-        )}
+        {job.publishedAt && <span>Published {formatDate(job.publishedAt)}</span>}
       </div>
       {(baseScore ?? similarity) != null && (
         <p className="match">
@@ -271,8 +255,7 @@ export function JobCard({
       </div>
       {topMatchNames && topMatchNames.length > 0 && (
         <p className="top-matches">
-          <span className="top-matches-label">Likely matches:</span>{' '}
-          {topMatchNames.join(', ')}
+          <span className="top-matches-label">Likely matches:</span> {topMatchNames.join(', ')}
         </p>
       )}
       {onChangeSentCvs && candidates && (
@@ -300,9 +283,7 @@ export function JobCard({
             <summary>
               {job.sentCvIds.length === 0
                 ? 'None selected'
-                : sortedByLabel(
-                    candidates.filter((c) => job.sentCvIds.includes(c.id)),
-                  )
+                : sortedByLabel(candidates.filter((c) => job.sentCvIds.includes(c.id)))
                     .map(candidateLabel)
                     .join(', ')}
             </summary>
@@ -368,10 +349,8 @@ export function JobCard({
               {job.seenAt ? 'Seen' : 'Mark as seen'}
             </button>
           )}
-          {onMark &&
-            markButton('saved', 'Saved', 'Save', 'saved')}
-          {onMark &&
-            markButton('dead', 'Dead', 'Mark dead', 'dead')}
+          {onMark && markButton('saved', 'Saved', 'Save', 'saved')}
+          {onMark && markButton('dead', 'Dead', 'Mark dead', 'dead')}
         </div>
       )}
     </li>

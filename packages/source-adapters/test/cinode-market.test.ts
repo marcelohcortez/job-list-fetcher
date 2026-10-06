@@ -48,10 +48,7 @@ function detailPage({
   skills = ['GitOps', 'Docker'],
 }: { description?: string | null; skills?: string[] } = {}) {
   const skillTags = skills
-    .map(
-      (skill) =>
-        `<div class="details__skill"><a href="/x" title="${skill}">${skill}</a></div>`,
-    )
+    .map((skill) => `<div class="details__skill"><a href="/x" title="${skill}">${skill}</a></div>`)
     .join('');
   return `<html><body><div class="wysiwyg">
     <div class="wysiwyg-output">${description ?? ''}</div>
@@ -81,21 +78,15 @@ describe('CinodeMarketAdapter', () => {
       url: 'https://market.cinode.com/requests/22485',
     });
     expect(records[0].deadline).toEqual(new Date('2026-09-30T00:00:00.000Z'));
-    expect(records[0].sourcePublishedAt).toEqual(
-      new Date('2026-09-14T00:00:00.000Z'),
-    );
+    expect(records[0].sourcePublishedAt).toEqual(new Date('2026-09-14T00:00:00.000Z'));
     expect(isJobInScope(records[0].title, records[0].location)).toBe(true);
   });
 
   it('sends the XHR header the list endpoint requires', async () => {
-    const fetcher = vi.fn(async (_url: string, _init?: RequestInit) =>
-      respond(page([card()])),
-    );
+    const fetcher = vi.fn(async (_url: string, _init?: RequestInit) => respond(page([card()])));
     await new CinodeMarketAdapter({ rateLimitMs: 0, fetcher }).fetchJobs();
     const init = fetcher.mock.calls[0][1] as RequestInit;
-    expect((init.headers as Record<string, string>)['X-Requested-With']).toBe(
-      'XMLHttpRequest',
-    );
+    expect((init.headers as Record<string, string>)['X-Requested-With']).toBe('XMLHttpRequest');
   });
 
   it('follows the cursor until the site stops returning one', async () => {
@@ -143,9 +134,7 @@ describe('CinodeMarketAdapter', () => {
       ['<span>Remote</span>', 'Remote'],
     ];
     for (const [markup, expected] of cases) {
-      const fetcher = vi.fn(async () =>
-        respond(page([card({ location: markup })])),
-      );
+      const fetcher = vi.fn(async () => respond(page([card({ location: markup })])));
       const records = await new CinodeMarketAdapter({
         rateLimitMs: 0,
         fetcher,
@@ -156,9 +145,7 @@ describe('CinodeMarketAdapter', () => {
 
   it('warns rather than throwing when the markup no longer parses', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const fetcher = vi.fn(async () =>
-      respond('<html><body>redesign</body></html>'),
-    );
+    const fetcher = vi.fn(async () => respond('<html><body>redesign</body></html>'));
     const records = await new CinodeMarketAdapter({
       rateLimitMs: 0,
       fetcher,
@@ -170,7 +157,7 @@ describe('CinodeMarketAdapter', () => {
     warn.mockRestore();
   });
 
-  it('fetches each new card\'s detail page for its description and desired skills', async () => {
+  it("fetches each new card's detail page for its description and desired skills", async () => {
     const fetcher = vi.fn(async (url: string) => {
       if (url.endsWith('/requests/22485')) return respond(detailPage());
       return respond(page([card()]));
@@ -180,9 +167,7 @@ describe('CinodeMarketAdapter', () => {
       fetcher,
     }).fetchJobs();
 
-    expect(records[0].description).toBe(
-      'Line one. Line two.\n\nDesired skills: GitOps, Docker',
-    );
+    expect(records[0].description).toBe('Line one. Line two.\n\nDesired skills: GitOps, Docker');
   });
 
   it('falls back to no description when a detail page fails to fetch', async () => {
@@ -207,9 +192,9 @@ describe('CinodeMarketAdapter', () => {
 
   it('throws on non-OK responses', async () => {
     const fetcher = vi.fn(async () => new Response('nope', { status: 503 }));
-    await expect(
-      new CinodeMarketAdapter({ rateLimitMs: 0, fetcher }).fetchJobs(),
-    ).rejects.toThrow(/503/);
+    await expect(new CinodeMarketAdapter({ rateLimitMs: 0, fetcher }).fetchJobs()).rejects.toThrow(
+      /503/,
+    );
   });
 
   it('stops at maxPages so a broken cursor cannot loop forever', async () => {

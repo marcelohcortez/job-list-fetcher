@@ -120,12 +120,12 @@ CORE RESPONSIBILITIES: [coreResponsibilities joined by ". "]
 
 Score 0–100 on how cleanly the source reduced to signal:
 
-| Dimension | Weight | What it measures |
-|---|---:|---|
-| Fluff removal | 30 | No marketing/culture/boilerplate leaked into any field. |
-| Requirement completeness | 30 | Every stated hard requirement, skill, and responsibility is captured. |
-| Fidelity | 25 | Nothing invented, exaggerated, or reclassified (required vs. nice-to-have) incorrectly. |
-| Clarity/ATS structure | 15 | Fields read as clean, parseable, standalone criteria. |
+| Dimension                | Weight | What it measures                                                                        |
+| ------------------------ | -----: | --------------------------------------------------------------------------------------- |
+| Fluff removal            |     30 | No marketing/culture/boilerplate leaked into any field.                                 |
+| Requirement completeness |     30 | Every stated hard requirement, skill, and responsibility is captured.                   |
+| Fidelity                 |     25 | Nothing invented, exaggerated, or reclassified (required vs. nice-to-have) incorrectly. |
+| Clarity/ATS structure    |     15 | Fields read as clean, parseable, standalone criteria.                                   |
 
 ```text
 score = round(sum(dimension_score × weight) / 100)
@@ -145,15 +145,19 @@ The extracted `SanitizedProfile` object exactly as in step 2.
 **Experience:** [experienceProfile]
 
 ## Required Skills
+
 - [skill]
 
 ## Soft Skills
+
 - [skill]
 
 ## Core Responsibilities
+
 - [responsibility]
 
 ---
+
 Anchor document:
 [the anchor document from step 3]
 ```
@@ -179,11 +183,11 @@ Anchor document:
 
 **[job_title]** — [experienceProfile]
 
-| Field | Content |
-|---|---|
-| Required skills | ... |
-| Soft skills | ... |
-| Core responsibilities | ... |
+| Field                 | Content |
+| --------------------- | ------- |
+| Required skills       | ...     |
+| Soft skills           | ...     |
+| Core responsibilities | ...     |
 
 ## Fluff removed
 

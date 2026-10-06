@@ -10,10 +10,7 @@ export async function setSentCvs(
   const sentAt = new Date().toISOString();
 
   await db.transaction().execute(async (trx) => {
-    await trx
-      .deleteFrom('job_sent_cvs')
-      .where('job_opening_id', '=', jobOpeningId)
-      .execute();
+    await trx.deleteFrom('job_sent_cvs').where('job_opening_id', '=', jobOpeningId).execute();
 
     if (uniqueIds.length === 0) return;
 

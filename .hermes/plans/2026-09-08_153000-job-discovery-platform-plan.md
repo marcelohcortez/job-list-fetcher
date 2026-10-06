@@ -262,10 +262,7 @@ export function matchesGothenburgLocation(location: string): boolean {
   const normalizedLocation = location.trim().toLowerCase();
 
   // Check for Gothenburg or Göteborg variants (case insensitive, ignoring punctuation)
-  return (
-    normalizedLocation.includes('gothenburg') ||
-    normalizedLocation.includes('göteborg')
-  );
+  return normalizedLocation.includes('gothenburg') || normalizedLocation.includes('göteborg');
 }
 ```
 
@@ -368,9 +365,7 @@ export function isCinodeJobEligible(job: any): boolean {
   // If no deadline is provided but the position is still active/available
   if (
     !deadline &&
-    (job.status === 'open' ||
-      job.status === 'active' ||
-      job.status === 'published')
+    (job.status === 'open' || job.status === 'active' || job.status === 'published')
   ) {
     return true;
   }

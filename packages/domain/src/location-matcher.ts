@@ -18,12 +18,7 @@ export function setLocationSynonyms(map: Readonly<Record<string, string>>): void
 
 export function normalizeLocation(location: string): string {
   if (!location) return '';
-  return location
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ' ')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '');
+  return location.toLowerCase().trim().replace(/\s+/g, ' ').normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
 export function canonicalizeLocation(location: string): string {

@@ -46,9 +46,7 @@ async function main() {
   const rows = await db
     .selectFrom('laya_evaluations')
     .select(['job_opening_id', 'candidate_id', 'score', 'choice', 'truncated'])
-    .where((eb) =>
-      eb.or([eb('mismatch_reasoning', 'is', null), eb('mismatch_reasoning', '=', '')]),
-    )
+    .where((eb) => eb.or([eb('mismatch_reasoning', 'is', null), eb('mismatch_reasoning', '=', '')]))
     .execute();
 
   console.log(`Found ${rows.length} laya_evaluations row(s) with empty mismatch_reasoning.`);

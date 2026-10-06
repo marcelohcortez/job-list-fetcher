@@ -1,6 +1,6 @@
 # How Matching Works
 
-This is the current, living reference for how a candidate gets matched to a job opening — every stage, in order, and **which file to edit** to change each stage's behavior. For the *history* of why the scoring formula looks the way it does (including three approaches that were tried and reverted), see [ADR 0009](adr/0009-skill-taxonomy-and-weighted-matching.md), [ADR 0010](adr/0010-curated-skill-relations-and-umbrella-categories.md), and [ADR 0012](adr/0012-candidate-role-category-and-mismatch-penalty.md) (role-category compatibility). This document describes the shipped behavior only.
+This is the current, living reference for how a candidate gets matched to a job opening — every stage, in order, and **which file to edit** to change each stage's behavior. For the _history_ of why the scoring formula looks the way it does (including three approaches that were tried and reverted), see [ADR 0009](adr/0009-skill-taxonomy-and-weighted-matching.md), [ADR 0010](adr/0010-curated-skill-relations-and-umbrella-categories.md), and [ADR 0012](adr/0012-candidate-role-category-and-mismatch-penalty.md) (role-category compatibility). This document describes the shipped behavior only.
 
 ## Overview
 
@@ -11,7 +11,7 @@ A match score blends two independent signals, then applies two multiplicative di
 3. **Role-category compatibility** (ADR 0012) — a multiplicative penalty (`ROLE_MISMATCH_PENALTY`) applied when the job's and candidate's coarse role categories (engineer, designer, product manager, ...) are both known and incompatible, regardless of how high the two signals above scored.
 4. **No-required-skills discount** (ADR 0012) — a separate multiplicative penalty (`NO_REQUIRED_SKILLS_PENALTY`) applied whenever a job has zero extracted required skills, since scoring then rests entirely on the least reliable signal (semantic similarity).
 
-Skill coverage dominates *on purpose*: two very different roles can share enough generic vocabulary ("engineer", "cloud", "team") to look deceptively similar on whole-document similarity alone (see ADR 0009). Coverage is the literal, checkable signal; similarity is the fallback for when there's nothing literal to check. Role-category compatibility exists because *neither* of those signals ever checks what kind of role is being matched at all — see ADR 0012 for the CV-scored-75%-against-an-unrelated-role case that motivated it.
+Skill coverage dominates _on purpose_: two very different roles can share enough generic vocabulary ("engineer", "cloud", "team") to look deceptively similar on whole-document similarity alone (see ADR 0009). Coverage is the literal, checkable signal; similarity is the fallback for when there's nothing literal to check. Role-category compatibility exists because _neither_ of those signals ever checks what kind of role is being matched at all — see ADR 0012 for the CV-scored-75%-against-an-unrelated-role case that motivated it.
 
 ## Stage by stage
 
@@ -29,7 +29,7 @@ Every source adapter (`packages/source-adapters/src/*.ts`) fetches raw postings 
 
 A posting's `description` field is only as good as what the adapter captured. This matters a lot for matching: a job with an empty/boilerplate-only description yields no discrete required skills at sanitize time (step 4) and falls all the way back to raw semantic similarity (the least reliable signal — see "Known limitations" below).
 
-Concretely: Lever's API splits a posting into an intro (`descriptionPlain`) and a separate `lists` array of labelled sections ("What You Will Do:", "What You Will Bring:", etc.) — the actual requirements usually live in `lists`, not the intro. `packages/source-adapters/src/lever.ts`'s `resolveDescription` concatenates both; if a future adapter (or a Lever API change) starts dropping content again, the symptom is the same as a genuinely vague job ad — zero required skills — so if a *specific* company's jobs all show `skillCoverage: null`, check the raw API response for that source before assuming the ad is just vague.
+Concretely: Lever's API splits a posting into an intro (`descriptionPlain`) and a separate `lists` array of labelled sections ("What You Will Do:", "What You Will Bring:", etc.) — the actual requirements usually live in `lists`, not the intro. `packages/source-adapters/src/lever.ts`'s `resolveDescription` concatenates both; if a future adapter (or a Lever API change) starts dropping content again, the symptom is the same as a genuinely vague job ad — zero required skills — so if a _specific_ company's jobs all show `skillCoverage: null`, check the raw API response for that source before assuming the ad is just vague.
 
 **To change what text is captured per source**: edit that adapter's `resolveDescription`/`toSourceRecord` in `packages/source-adapters/src/<source>.ts`.
 
@@ -37,13 +37,13 @@ Concretely: Lever's API splits a posting into an intro (`descriptionPlain`) and 
 
 `packages/semantic-match/src/ollama.ts` sends the job's `title + company + description` (or a CV's extracted text) to a local LLM (`OLLAMA_CHAT_MODEL`, default `qwen2.5:7b`), which extracts it into the shared `SanitizedProfile` shape (`packages/semantic-match/src/schema.ts`):
 
-| Field | Content |
-| --- | --- |
-| `title` | Job title / candidate's most recent or target title |
-| `requiredSkills` | **Hard/technical skills only** — named tools, languages, frameworks, platforms, certifications, methodologies. Feeds discrete skill-coverage scoring (step 5). |
-| `softSkills` | Behavioral/interpersonal/mindset qualities. Feeds only the whole-document anchor (step 4) — never discrete scoring. |
-| `experienceProfile` | Years/seniority/degree text |
-| `coreResponsibilities` | Task list |
+| Field                  | Content                                                                                                                                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`                | Job title / candidate's most recent or target title                                                                                                            |
+| `requiredSkills`       | **Hard/technical skills only** — named tools, languages, frameworks, platforms, certifications, methodologies. Feeds discrete skill-coverage scoring (step 5). |
+| `softSkills`           | Behavioral/interpersonal/mindset qualities. Feeds only the whole-document anchor (step 4) — never discrete scoring.                                            |
+| `experienceProfile`    | Years/seniority/degree text                                                                                                                                    |
+| `coreResponsibilities` | Task list                                                                                                                                                      |
 
 The `requiredSkills`/`softSkills` split is what determines whether a job's scoring is dominated by literal skill-coverage or falls back to similarity — **getting this split right matters more than any scoring-side tuning**. The field descriptions actually sent to the model live in `PROFILE_JSON_SCHEMA` in `ollama.ts` (sourced from `PROFILE_FIELD_DESCRIPTIONS` in `schema.ts`, one shared definition so the zod schema and the JSON schema sent to the LLM can't drift apart) and are reinforced again in the system prompt (`SKILL_SPLIT_INSTRUCTION`).
 
@@ -61,7 +61,7 @@ Right after sanitization, `sanitized.title` is also run through `categorizeRoleT
 
 `packages/semantic-match/src/anchor.ts` renders the sanitized fields (including `softSkills`) back into one plain paragraph under shared headers (`JOB TITLE:`, `TECHNICAL SKILLS:`, `SOFT SKILLS:`, `EXPERIENCE PROFILE:`, `CORE RESPONSIBILITIES:`) — plain text, not JSON, since JSON punctuation degrades embedding similarity. This is embedded with `OLLAMA_EMBED_MODEL` (default `nomic-embed-text`) and stored in Chroma (`job_openings`/`candidates` collections, cosine similarity). This embedding is what produces `semanticSimilarity` in the match response.
 
-**To change the anchor template**: edit `buildAnchorDocument` in `packages/semantic-match/src/anchor.ts` — but note both job and candidate profiles must go through the *same* template, or their vectors stop being comparable.
+**To change the anchor template**: edit `buildAnchorDocument` in `packages/semantic-match/src/anchor.ts` — but note both job and candidate profiles must go through the _same_ template, or their vectors stop being comparable.
 
 ### 5. Skill canonicalization
 
@@ -88,6 +88,7 @@ Each row: `(skill_id_a, skill_id_b, relation_type, weight)`, stored bidirectiona
 `apps/api/src/routes/matches.ts`, `blendScore`, run per (candidate, job) pair:
 
 For each of the job's required skills:
+
 - **Exact match** (candidate holds the same canonical skill) → credit `1`.
 - **No exact match, but a curated relation exists** to a skill the candidate holds → credit the relation's `weight` (best one, if multiple apply).
 - **Neither** → credit `0`.
@@ -105,9 +106,9 @@ score = SKILL_OVERLAP_WEIGHT * skillCoverage + (1 - SKILL_OVERLAP_WEIGHT) * sema
 score = (SKILL_OVERLAP_WEIGHT * skillCoverage + (1 - SKILL_OVERLAP_WEIGHT) * semanticSimilarity) * roleMultiplier
 ```
 
-A job counts as a match only if `score >= MATCH_MIN_SIMILARITY` (default `0.65`). Results are capped at `MATCH_TOP_K` per candidate if set (unset by default — no limit); this caps how many jobs the vector search considers as *candidates* for scoring, not the final match count after filtering.
+A job counts as a match only if `score >= MATCH_MIN_SIMILARITY` (default `0.65`). Results are capped at `MATCH_TOP_K` per candidate if set (unset by default — no limit); this caps how many jobs the vector search considers as _candidates_ for scoring, not the final match count after filtering.
 
-**To change scoring weights/thresholds**: env vars `SKILL_OVERLAP_WEIGHT` (default `0.6`), `MATCH_MIN_SIMILARITY` (default `0.65`), `MATCH_TOP_K` (default unset), `ROLE_MISMATCH_PENALTY` (default `0.5`), `NO_REQUIRED_SKILLS_PENALTY` (default `0.75`). To change the scoring *logic itself* (not just its weights): `blendScore` in `apps/api/src/routes/matches.ts`.
+**To change scoring weights/thresholds**: env vars `SKILL_OVERLAP_WEIGHT` (default `0.6`), `MATCH_MIN_SIMILARITY` (default `0.65`), `MATCH_TOP_K` (default unset), `ROLE_MISMATCH_PENALTY` (default `0.5`), `NO_REQUIRED_SKILLS_PENALTY` (default `0.75`). To change the scoring _logic itself_ (not just its weights): `blendScore` in `apps/api/src/routes/matches.ts`.
 
 ### 7.5 Laya evaluation (LLM-judge re-ranking)
 
@@ -117,7 +118,7 @@ See [laya-integration-plan.md](laya-integration-plan.md) for the full design. La
 - **What it returns**: a `score` (0-1, normalized from Laya's ordinal `fit` rubric), a `choice` verdict (`strong`/`moderate`/`weak`), and a `reasoning` string. Laya itself is a non-generative BERT classifier and never produces text — `reasoning` is generated separately by the existing local Ollama model (`createOllamaReasoner`, `packages/semantic-match/src/laya.ts`), given the job/CV text plus Laya's computed verdict/score.
 - **Persistence**: one row per `(job_opening_id, candidate_id)` in `laya_evaluations` (migration `015-laya-evaluations`) — computed once, not on every `GET /api/matches`.
 - **Role gate**: pairs whose role categories are both known and incompatible (e.g. `design` CV vs `engineering` job) are never sent to Laya (`laya-runner.ts`). A Laya `strong`/`moderate` verdict never rescues any pair past `MATCH_MIN_SIMILARITY` (an earlier override did, and surfaced 1-of-8-skill matches).
-- **Scoring**: `blendScore` (`apps/api/src/routes/matches.ts`) adds Laya as a third additive term, weighted by `LAYA_WEIGHT` (default `0.3`). The term is the pair's *percentile rank* among the candidate's evaluated pairs (0-1), not Laya's raw score, which is compressed into ~0.82-0.90 regardless of verdict. With fewer than two evaluated pairs there is no rank, so the Laya weight folds back. The raw score/choice are still shown in the UI. A pair with no persisted evaluation yet doesn't spend that weight budget at all — it falls back to the existing two-term blend exactly as before this feature shipped.
+- **Scoring**: `blendScore` (`apps/api/src/routes/matches.ts`) adds Laya as a third additive term, weighted by `LAYA_WEIGHT` (default `0.3`). The term is the pair's _percentile rank_ among the candidate's evaluated pairs (0-1), not Laya's raw score, which is compressed into ~0.82-0.90 regardless of verdict. With fewer than two evaluated pairs there is no rank, so the Laya weight folds back. The raw score/choice are still shown in the UI. A pair with no persisted evaluation yet doesn't spend that weight budget at all — it falls back to the existing two-term blend exactly as before this feature shipped.
 - **Optional**: leave `LAYA_API_URL` unset to skip Laya entirely; ingestion and scoring behave exactly as before.
 
 ### 8. API surface
@@ -129,7 +130,7 @@ Each match includes: `similarity` (the blended score used for ranking/filtering)
 
 ## Re-processing existing jobs
 
-Changes to sanitization (step 3), canonicalization (step 5), or relations (step 6) only affect *already-stored* jobs if they're re-processed:
+Changes to sanitization (step 3), canonicalization (step 5), or relations (step 6) only affect _already-stored_ jobs if they're re-processed:
 
 - **Skill relations** (step 6) reseed automatically on every API startup (`seedSkillRelations`, idempotent) — no re-processing needed, since relations are looked up at query time, not baked into stored data.
 - **Sanitization/canonicalization changes** (steps 3 and 5) require re-running extraction against already-stored jobs: `npm run backfill:skills --workspace @job-fetcher/api` re-sanitizes every job opening and re-canonicalizes its required skills, using whatever `packages/semantic-match`/`apps/api/src/skill-taxonomy.ts` code is current. It's an LLM call per job — budget real time for a full sweep (a few hundred jobs took roughly 10-15 minutes against a local `qwen2.5:7b`, most of it spent on inference, not the deliberate 250ms rate-limit between calls). The candidate-side equivalent is `npm run backfill:cvs --workspace @job-fetcher/api` (added in [ADR 0013](adr/0013-remove-cv-refactor-rewrite-step.md)) — re-sanitizes and re-canonicalizes every already-`sanitized` candidate the same way; run it after any change to `sanitizeCandidate`'s prompt/schema.
@@ -142,7 +143,7 @@ Changes to sanitization (step 3), canonicalization (step 5), or relations (step 
 - **No umbrella/category-level matching** (e.g. crediting a candidate's "Vue" against a job's "Frontend Development" requirement generically) — proposed but deliberately not implemented; see ADR 0010.
 - **Stale source records**: a closed/removed posting is never re-visited or pruned once ingestion stops returning it.
 - **`role_category` is a coarse, keyword-based classifier** (ADR 0012) — a title that doesn't clearly match any known pattern classifies as `null` ("unknown") and gets no role-compatibility protection at all, and a title that's genuinely ambiguous across categories may be miscategorized. A candidate sanitized before this classifier existed picks up a `role_category` the next time `npm run backfill:cvs` runs (see above) rather than staying `null` until re-uploaded. **This is a bigger hole than it sounds**: 87/303 stored jobs (29%, 2026-09-22 audit) currently have `role_category = null` and so get zero role-mismatch protection no matter how unrelated the role.
-- **No seniority/experience-level signal at all.** The pipeline checks *what kind* of role (via `role_category`) but never *what level* — nothing stops a junior CV outscoring a senior-only posting or vice versa. There's no discrete field for this today (`experienceProfile` is free text, not structured, and isn't used in `blendScore`). Would need the same treatment `role_category` got in ADR 0012: a coarse extracted level + a compatibility/adjacency table + a multiplicative penalty.
+- **No seniority/experience-level signal at all.** The pipeline checks _what kind_ of role (via `role_category`) but never _what level_ — nothing stops a junior CV outscoring a senior-only posting or vice versa. There's no discrete field for this today (`experienceProfile` is free text, not structured, and isn't used in `blendScore`). Would need the same treatment `role_category` got in ADR 0012: a coarse extracted level + a compatibility/adjacency table + a multiplicative penalty.
 - **Skill-coverage credit doesn't scale with how many required skills there are.** `skillCoverage` is a ratio (`matched / total`), so a job with exactly 1 required skill that happens to match scores a perfect `1.0` — identical to a job where 10/10 matched — even though one match is far weaker evidence of fit than ten. Combined with `SKILL_OVERLAP_WEIGHT` (0.6) dominating the blend, a thin 1-skill job can outrank a genuinely well-matched job with many overlapping skills. 33/303 stored jobs (11%) have only 1-2 required skills and are most exposed to this. Not yet fixed; a per-skill-count confidence dampener (e.g. scaling `skillOverlapWeight` down, or requiring a minimum `requiredSkillCount` for full weight) is an open option.
 
 ### Audit findings (2026-09-22)
@@ -156,19 +157,19 @@ Ran a live audit against the current DB (303 jobs, 12 sanitized candidates) afte
 
 ## Quick reference: what to edit
 
-| Want to change... | Edit this |
-| --- | --- |
-| Which job titles are in scope | `packages/domain/src/target-roles.ts` (`TARGET_ROLES`) |
-| Location scope rules | `packages/domain/src/target-filter.ts` |
-| What counts as "hard" vs "soft" skill | `packages/semantic-match/src/schema.ts` (`PROFILE_FIELD_DESCRIPTIONS`) + `packages/semantic-match/src/ollama.ts` (`SKILL_SPLIT_INSTRUCTION`) |
-| Skill formatting normalization | `packages/domain/src/skill-normalizer.ts` |
-| Skill merge/canonicalization strictness | `SKILL_MATCH_MIN_SIMILARITY` env var |
-| "These two skills should correlate" | `apps/api/src/skill-relations-seed.ts` (`SKILL_RELATION_SEEDS`) — the primary lever for most match-quality tweaks |
-| Match scoring weights/thresholds | `SKILL_OVERLAP_WEIGHT`, `MATCH_MIN_SIMILARITY`, `MATCH_TOP_K`, `ROLE_MISMATCH_PENALTY`, `NO_REQUIRED_SKILLS_PENALTY`, `LAYA_WEIGHT` env vars |
-| Laya deployment/wiring | `LAYA_API_URL`/`LAYA_API_KEY`/`LAYA_TOP_K` env vars, `docker compose --profile laya up`, `packages/semantic-match/src/laya.ts`, `apps/api/src/laya-runner.ts` |
-| Match scoring logic itself | `apps/api/src/routes/matches.ts` (`blendScore`) |
-| Role-category taxonomy/classification | `packages/domain/src/role-categories.ts` (`CATEGORY_PATTERNS`, `ADJACENT_CATEGORIES`) |
-| Anchor document template | `packages/semantic-match/src/anchor.ts` |
-| Which companies/boards are fetched | `GREENHOUSE_BOARDS`/`LEVER_BOARDS` env vars, or `packages/source-adapters/src/boards.ts` for permanent defaults |
-| What text a source captures | That source's adapter in `packages/source-adapters/src/<source>.ts` |
-| Applying any of the above to already-stored jobs | See "Re-processing existing jobs" above |
+| Want to change...                                | Edit this                                                                                                                                                     |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Which job titles are in scope                    | `packages/domain/src/target-roles.ts` (`TARGET_ROLES`)                                                                                                        |
+| Location scope rules                             | `packages/domain/src/target-filter.ts`                                                                                                                        |
+| What counts as "hard" vs "soft" skill            | `packages/semantic-match/src/schema.ts` (`PROFILE_FIELD_DESCRIPTIONS`) + `packages/semantic-match/src/ollama.ts` (`SKILL_SPLIT_INSTRUCTION`)                  |
+| Skill formatting normalization                   | `packages/domain/src/skill-normalizer.ts`                                                                                                                     |
+| Skill merge/canonicalization strictness          | `SKILL_MATCH_MIN_SIMILARITY` env var                                                                                                                          |
+| "These two skills should correlate"              | `apps/api/src/skill-relations-seed.ts` (`SKILL_RELATION_SEEDS`) — the primary lever for most match-quality tweaks                                             |
+| Match scoring weights/thresholds                 | `SKILL_OVERLAP_WEIGHT`, `MATCH_MIN_SIMILARITY`, `MATCH_TOP_K`, `ROLE_MISMATCH_PENALTY`, `NO_REQUIRED_SKILLS_PENALTY`, `LAYA_WEIGHT` env vars                  |
+| Laya deployment/wiring                           | `LAYA_API_URL`/`LAYA_API_KEY`/`LAYA_TOP_K` env vars, `docker compose --profile laya up`, `packages/semantic-match/src/laya.ts`, `apps/api/src/laya-runner.ts` |
+| Match scoring logic itself                       | `apps/api/src/routes/matches.ts` (`blendScore`)                                                                                                               |
+| Role-category taxonomy/classification            | `packages/domain/src/role-categories.ts` (`CATEGORY_PATTERNS`, `ADJACENT_CATEGORIES`)                                                                         |
+| Anchor document template                         | `packages/semantic-match/src/anchor.ts`                                                                                                                       |
+| Which companies/boards are fetched               | `GREENHOUSE_BOARDS`/`LEVER_BOARDS` env vars, or `packages/source-adapters/src/boards.ts` for permanent defaults                                               |
+| What text a source captures                      | That source's adapter in `packages/source-adapters/src/<source>.ts`                                                                                           |
+| Applying any of the above to already-stored jobs | See "Re-processing existing jobs" above                                                                                                                       |

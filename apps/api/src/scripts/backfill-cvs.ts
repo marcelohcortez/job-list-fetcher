@@ -104,7 +104,9 @@ async function main() {
     } catch (err) {
       failed += 1;
       await markCandidateFailed(db, candidate.id, (err as Error).message).catch(() => {});
-      console.warn(`[${index + 1}/${candidates.length}] failed ${candidate.id}: ${(err as Error).message}`);
+      console.warn(
+        `[${index + 1}/${candidates.length}] failed ${candidate.id}: ${(err as Error).message}`,
+      );
     }
     console.log(`[${index + 1}/${candidates.length}] ok=${ok} failed=${failed}`);
     await sleep(DELAY_MS);

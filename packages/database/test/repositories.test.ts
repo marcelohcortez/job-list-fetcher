@@ -28,11 +28,7 @@ import {
   markJobEmbeddingFailed,
   getJobEmbeddingStatus,
 } from '../src/repositories/job-embeddings';
-import {
-  setUserMark,
-  setJobSeen,
-  getUserMarks,
-} from '../src/repositories/job-marks';
+import { setUserMark, setJobSeen, getUserMarks } from '../src/repositories/job-marks';
 import {
   insertTargetRolePhraseIfNew,
   listTargetRolePhrases,
@@ -93,38 +89,25 @@ describe('repositories', () => {
 
   it('updates a source record when its content changed', async () => {
     await ingestSourceRecord(db, record());
-    const updated = await ingestSourceRecord(
-      db,
-      record({ description: 'Something new' }),
-    );
+    const updated = await ingestSourceRecord(db, record({ description: 'Something new' }));
 
     expect(updated.created).toBe(false);
     expect(updated.unchanged).toBe(false);
-    expect((await getJobById(db, updated.jobOpeningId))?.description).toBe(
-      'Something new',
-    );
+    expect((await getJobById(db, updated.jobOpeningId))?.description).toBe('Something new');
   });
 
   it('updates a job in place when its title changes its canonical key', async () => {
     const first = await ingestSourceRecord(db, record());
-    const updated = await ingestSourceRecord(
-      db,
-      record({ title: 'Senior Software Engineer' }),
-    );
+    const updated = await ingestSourceRecord(db, record({ title: 'Senior Software Engineer' }));
 
     expect(updated.jobOpeningId).toBe(first.jobOpeningId);
     expect(updated.created).toBe(false);
     expect(await countJobs(db)).toBe(1);
-    expect((await getJobById(db, first.jobOpeningId))?.title).toBe(
-      'Senior Software Engineer',
-    );
+    expect((await getJobById(db, first.jobOpeningId))?.title).toBe('Senior Software Engineer');
   });
 
   it('links the same canonical job from two sources', async () => {
-    const a = await ingestSourceRecord(
-      db,
-      record({ sourceName: 'cinode', sourceJobId: 'c1' }),
-    );
+    const a = await ingestSourceRecord(db, record({ sourceName: 'cinode', sourceJobId: 'c1' }));
     const b = await ingestSourceRecord(
       db,
       record({
@@ -164,10 +147,7 @@ describe('repositories', () => {
   });
 
   it('lists, filters, and searches jobs', async () => {
-    await ingestSourceRecord(
-      db,
-      record({ title: 'Backend Engineer', company: 'Acme' }),
-    );
+    await ingestSourceRecord(db, record({ title: 'Backend Engineer', company: 'Acme' }));
     await ingestSourceRecord(
       db,
       record({
@@ -181,18 +161,13 @@ describe('repositories', () => {
 
     expect((await listJobs(db)).length).toBe(2);
     expect((await listJobs(db, { source: 'cinode' })).length).toBe(2);
-    expect(
-      (await listJobs(db, { status: 'expired_grace_period' })).length,
-    ).toBe(1);
+    expect((await listJobs(db, { status: 'expired_grace_period' })).length).toBe(1);
     expect((await listJobs(db, { query: 'analyst' })).length).toBe(1);
     expect((await listJobs(db, { location: 'Gothenburg' })).length).toBe(2);
   });
 
   it('returns a job by id and hides nothing sensitive', async () => {
-    const { jobOpeningId } = await ingestSourceRecord(
-      db,
-      record({ rawPayload: { hidden: true } }),
-    );
+    const { jobOpeningId } = await ingestSourceRecord(db, record({ rawPayload: { hidden: true } }));
     const job = await getJobById(db, jobOpeningId);
     expect(job?.title).toBe('Software Engineer');
     expect(job?.canonicalKey).toBe('software-engineer:acme-corp:gothenburg');
@@ -287,20 +262,12 @@ describe('repositories', () => {
     expect(seenState[jobOpeningId].seenAt).not.toBeNull();
 
     await setUserMark(db, jobOpeningId, 'applied');
-    expect((await getUserMarks(db, [jobOpeningId]))[jobOpeningId].mark).toBe(
-      'applied',
-    );
-    expect(
-      (await getUserMarks(db, [jobOpeningId]))[jobOpeningId].seenAt,
-    ).not.toBeNull();
+    expect((await getUserMarks(db, [jobOpeningId]))[jobOpeningId].mark).toBe('applied');
+    expect((await getUserMarks(db, [jobOpeningId]))[jobOpeningId].seenAt).not.toBeNull();
 
     await setJobSeen(db, jobOpeningId, false);
-    expect(
-      (await getUserMarks(db, [jobOpeningId]))[jobOpeningId].seenAt,
-    ).toBeNull();
-    expect((await getUserMarks(db, [jobOpeningId]))[jobOpeningId].mark).toBe(
-      'applied',
-    );
+    expect((await getUserMarks(db, [jobOpeningId]))[jobOpeningId].seenAt).toBeNull();
+    expect((await getUserMarks(db, [jobOpeningId]))[jobOpeningId].mark).toBe('applied');
   });
 
   it('inserts, sanitizes, lists and deletes candidates', async () => {

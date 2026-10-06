@@ -1,12 +1,6 @@
 import type { SourceRecord } from '@job-fetcher/domain';
 import { SourceRecordSchema } from '@job-fetcher/domain';
-import {
-  asRecord,
-  pick,
-  pickDate,
-  pickString,
-  type AdapterOptions,
-} from './base';
+import { asRecord, pick, pickDate, pickString, type AdapterOptions } from './base';
 import {
   DEFAULT_GREENHOUSE_BOARDS,
   getGreenhouseBoards,
@@ -29,10 +23,7 @@ export class GreenhouseAdapter {
   private readonly baseUrl: string;
   private readonly explicitBoards?: BoardConfig[];
   private readonly rateLimitMs: number;
-  private readonly fetcher: (
-    url: string,
-    init?: RequestInit,
-  ) => Promise<Response>;
+  private readonly fetcher: (url: string, init?: RequestInit) => Promise<Response>;
 
   constructor(options: GreenhouseAdapterOptions = {}) {
     this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
@@ -54,14 +45,11 @@ export class GreenhouseAdapter {
 
   private async fetchBoard(board: BoardConfig): Promise<SourceRecord[]> {
     await new Promise((resolve) => setTimeout(resolve, this.rateLimitMs));
-    const response = await this.fetcher(
-      `${this.baseUrl}/${board.slug}/jobs?content=true`,
-      { headers: { Accept: 'application/json' } },
-    );
+    const response = await this.fetcher(`${this.baseUrl}/${board.slug}/jobs?content=true`, {
+      headers: { Accept: 'application/json' },
+    });
     if (!response.ok) {
-      throw new Error(
-        `Greenhouse board ${board.slug} request failed (${response.status})`,
-      );
+      throw new Error(`Greenhouse board ${board.slug} request failed (${response.status})`);
     }
     const payload = asRecord(await response.json());
     const records: SourceRecord[] = [];
@@ -70,16 +58,12 @@ export class GreenhouseAdapter {
       const record = this.toSourceRecord(job, board);
       const parsed = SourceRecordSchema.safeParse(record);
       if (parsed.success) records.push(parsed.data as SourceRecord);
-      else
-        throw new Error(`Invalid Greenhouse record: ${parsed.error.message}`);
+      else throw new Error(`Invalid Greenhouse record: ${parsed.error.message}`);
     }
     return records;
   }
 
-  private toSourceRecord(
-    job: Record<string, unknown>,
-    board: BoardConfig,
-  ): SourceRecord {
+  private toSourceRecord(job: Record<string, unknown>, board: BoardConfig): SourceRecord {
     const id = pick(job, 'id');
     const url = this.resolveUrl(board, job, id);
     const location = this.resolveLocation(job);
@@ -91,10 +75,7 @@ export class GreenhouseAdapter {
       title: pickString(job, 'title'),
       company: board.name,
       location,
-      description:
-        typeof content === 'string' && content.trim() !== ''
-          ? stripHtml(content)
-          : null,
+      description: typeof content === 'string' && content.trim() !== '' ? stripHtml(content) : null,
       url,
       applicationUrl: url,
       deadline: null,
@@ -105,11 +86,7 @@ export class GreenhouseAdapter {
     };
   }
 
-  private resolveUrl(
-    board: BoardConfig,
-    job: Record<string, unknown>,
-    id: unknown,
-  ): string {
+  private resolveUrl(board: BoardConfig, job: Record<string, unknown>, id: unknown): string {
     const absolute = pickString(job, 'absolute_url');
     if (absolute) return absolute;
     return `https://boards.greenhouse.io/${board.slug}/jobs/${id ?? ''}`;

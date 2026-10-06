@@ -60,10 +60,7 @@ export function UploadCvTab() {
     }
   };
 
-  const handleResolveDuplicate = async (
-    id: string,
-    action: 'ignore' | 'replace',
-  ) => {
+  const handleResolveDuplicate = async (id: string, action: 'ignore' | 'replace') => {
     setResolvingId(id);
     setError(null);
     try {
@@ -95,8 +92,8 @@ export function UploadCvTab() {
         <div className="cv-upload-info">
           <h2>Upload a CV</h2>
           <p className="muted">
-            Upload one PDF CV at a time. It's sanitized and embedded locally,
-            then shows up on the Matches tab against every open role.
+            Upload one PDF CV at a time. It's sanitized and embedded locally, then shows up on the
+            Matches tab against every open role.
           </p>
         </div>
         <div className="cv-upload-controls">
@@ -109,9 +106,7 @@ export function UploadCvTab() {
         </div>
       </div>
 
-      {uploading && (
-        <p className="muted">Reading and sanitizing the CV locally...</p>
-      )}
+      {uploading && <p className="muted">Reading and sanitizing the CV locally...</p>}
       {error && (
         <div className="error" role="alert">
           {error}
@@ -126,9 +121,7 @@ export function UploadCvTab() {
           removingId={removingId}
           onDelete={(id) => void handleDelete(id)}
           resolvingId={resolvingId}
-          onResolveDuplicate={(id, action) =>
-            void handleResolveDuplicate(id, action)
-          }
+          onResolveDuplicate={(id, action) => void handleResolveDuplicate(id, action)}
         />
       )}
 

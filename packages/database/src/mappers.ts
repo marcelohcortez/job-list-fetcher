@@ -1,9 +1,4 @@
-import type {
-  JobOpening,
-  JobStatus,
-  SourceRecord,
-  WorkModel,
-} from '@job-fetcher/domain';
+import type { JobOpening, JobStatus, SourceRecord, WorkModel } from '@job-fetcher/domain';
 import type { JobOpeningsTable, SourceRecordsTable } from './schema';
 
 export function parseDate(value: string | null): Date | null {

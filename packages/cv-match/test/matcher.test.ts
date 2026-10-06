@@ -38,9 +38,7 @@ function job(
 
 describe('normalizeText / tokenize', () => {
   it('lowercases, strips punctuation, tags and collapses whitespace', () => {
-    expect(normalizeText('<b>Full-Stack</b> / DevOps')).toBe(
-      'full stack devops',
-    );
+    expect(normalizeText('<b>Full-Stack</b> / DevOps')).toBe('full stack devops');
   });
 
   it('drops stopwords and short tokens', () => {
@@ -57,9 +55,7 @@ describe('normalizeText / tokenize', () => {
   });
 
   it('detects phrases with word boundaries', () => {
-    expect(containsPhrase('machine learning models', 'machine learning')).toBe(
-      true,
-    );
+    expect(containsPhrase('machine learning models', 'machine learning')).toBe(true);
     expect(containsPhrase('learning machines', 'machine learning')).toBe(false);
   });
 });
@@ -95,12 +91,8 @@ describe('CvMatcher', () => {
       'python python python python python software developer focused on python',
     );
     const once = new CvMatcher('python');
-    const ranked = repeated.match([
-      job('a', 'Python Developer', 'Strong python experience'),
-    ]);
-    const single = once.match([
-      job('a', 'Python Developer', 'Strong python experience'),
-    ]);
+    const ranked = repeated.match([job('a', 'Python Developer', 'Strong python experience')]);
+    const single = once.match([job('a', 'Python Developer', 'Strong python experience')]);
     expect(ranked[0].score).toBeGreaterThan(single[0].score);
   });
 
@@ -118,11 +110,7 @@ describe('CvMatcher', () => {
   it('reports matched terms and phrases', () => {
     const matcher = new CvMatcher(CV);
     const results = matcher.match([
-      job(
-        'a',
-        'Data Engineer',
-        'Kafka and Spark pipelines in a data engineering team',
-      ),
+      job('a', 'Data Engineer', 'Kafka and Spark pipelines in a data engineering team'),
     ]);
     const hit = results.find((r) => r.jobId === 'a');
     expect(hit!.matchedTerms).toContain('kafka');
