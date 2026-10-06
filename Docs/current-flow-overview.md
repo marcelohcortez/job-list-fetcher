@@ -60,7 +60,7 @@ score = skillCoverage * skillOverlapWeight
       × noRequiredSkillsPenalty    (job has 0 required skills → similarity-only fallback)
 ```
 
-`layaWeight` is only spent when a persisted Laya evaluation exists for that pair; otherwise it folds back into the two-term blend so a not-yet-evaluated pair isn't docked for missing data. A `minSkillsForFullConfidence` dampener also scales `skillOverlapWeight` down for jobs with very few required skills, so a lucky 1/1 match doesn't outscore a well-matched 8/10.
+`layaScore` in that formula is the pair's percentile rank within the candidate's evaluated shortlist, not Laya's raw score (which barely varies). `layaWeight` is only spent when a persisted Laya evaluation exists for that pair and at least one other pair is evaluated to rank against; otherwise it folds back into the two-term blend so a not-yet-evaluated pair isn't docked for missing data. A `minSkillsForFullConfidence` dampener also scales `skillOverlapWeight` down for jobs with very few required skills, so a lucky 1/1 match doesn't outscore a well-matched 8/10.
 
 Defaults: `skillOverlapWeight=0.6`, `layaWeight=0.3`, `roleMismatchPenalty=0.5`, `seniorityMismatchPenalty=0.7`, `noRequiredSkillsPenalty=0.75`, `minSkillsForFullConfidence=3`. All are runtime-editable via the Configuration screen ([`config-registry.ts`](../apps/api/src/config-registry.ts), [`ConfigTab.tsx`](../apps/web/src/ConfigTab.tsx)).
 

@@ -127,9 +127,15 @@ export const DEFAULT_CATEGORY_PATTERN_SOURCES: readonly (readonly [RoleCategory,
     'mobile-native',
     '\\b(android|ios)\\b',
   ],
-  ['product-management', '\\b(product manager|product owner|program manager|technical program manager)\\b'],
+  [
+    'product-management',
+    '\\b(product manager|product owner|program manager|technical program manager|product operations)\\b',
+  ],
   ['delivery-management', '\\b(delivery manager|project manager|scrum master|engagement manager|programme manager)\\b'],
-  ['business-analysis', '\\b(business analyst|business systems analyst)\\b'],
+  [
+    'business-analysis',
+    '\\b(business analyst|business systems analyst|solution analyst|systems analyst|ai analyst)\\b',
+  ],
   [
     'sales-customer-success',
     '\\b(sales engineer|customer success|technical account manager|customer enablement|solutions engineer)\\b',

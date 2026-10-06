@@ -65,6 +65,27 @@ async function addSanitizedCandidate(
   return candidate.id;
 }
 
+function semanticWithHits(hits: { id: string; similarity: number }[]): SemanticPipeline {
+  return {
+    sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), extractSkills: vi.fn(), embed: vi.fn() },
+    vectorStore: {
+      upsertJob: vi.fn(),
+      deleteJob: vi.fn(),
+      upsertCandidate: vi.fn(),
+      deleteCandidate: vi.fn(),
+      getCandidateEmbedding: vi.fn().mockResolvedValue([0.1, 0.2]),
+      getJobEmbedding: vi.fn().mockResolvedValue(null),
+      queryCandidatesForJob: vi.fn().mockResolvedValue([]),
+      queryJobsForCandidate: vi.fn().mockResolvedValue(hits),
+      upsertRolePhrase: vi.fn(),
+      queryNearestRolePhrase: vi.fn(),
+      upsertSkill: vi.fn(),
+      queryNearestSkill: vi.fn(),
+    },
+    cvRefactor: { refactorCv: vi.fn() },
+  };
+}
+
 beforeEach(async () => {
   sqlite = openSqlite(':memory:');
   db = createKysely(sqlite);
@@ -423,55 +444,97 @@ describe('GET /matches', () => {
     expect(match.similarity).toBeCloseTo(0.6);
   });
 
-  it('blends in a persisted Laya evaluation as a third scoring term', async () => {
-    await runIngestion(db, [fakeAdapter([record()])]);
-    const jobs = await db.selectFrom('job_openings').select('id').execute();
-    const jobOpeningId = jobs[0].id;
+  it('blends in a persisted Laya evaluation as a rank-based third scoring term', async () => {
+    await runIngestion(db, [
+      fakeAdapter([
+        record(),
+        record({ id: 'rec-2', sourceJobId: 'job-2', title: 'Backend Developer', url: 'https://example.com/jobs/2' }),
+      ]),
+    ]);
+    const jobs = await db.selectFrom('job_openings').select(['id', 'title']).execute();
+    const topJobId = jobs.find((job) => job.title === 'Software Engineer')!.id;
+    const bottomJobId = jobs.find((job) => job.title === 'Backend Developer')!.id;
 
     const candidateId = await addSanitizedCandidate('Laya Larsson');
 
     await upsertLayaEvaluation(db, {
-      jobOpeningId,
+      jobOpeningId: topJobId,
       candidateId,
       score: 0.9,
       choice: 'strong',
       reasoning: 'Strong overlap on core backend responsibilities.',
       mismatchReasoning: 'No notable gaps identified.',
     });
+    await upsertLayaEvaluation(db, {
+      jobOpeningId: bottomJobId,
+      candidateId,
+      score: 0.85,
+      choice: 'weak',
+      reasoning: 'Little overlap.',
+    });
 
-    const semantic: SemanticPipeline = {
-      sanitizer: { sanitizeJob: vi.fn(), sanitizeCandidate: vi.fn(), extractSkills: vi.fn(), embed: vi.fn() },
-      vectorStore: {
-        upsertJob: vi.fn(),
-        deleteJob: vi.fn(),
-        upsertCandidate: vi.fn(),
-        deleteCandidate: vi.fn(),
-        getCandidateEmbedding: vi.fn().mockResolvedValue([0.1, 0.2]),
-        getJobEmbedding: vi.fn().mockResolvedValue(null),
-        queryCandidatesForJob: vi.fn().mockResolvedValue([]),
-        queryJobsForCandidate: vi.fn().mockResolvedValue([{ id: jobOpeningId, similarity: 0.6 }]),
-        upsertRolePhrase: vi.fn(),
-        queryNearestRolePhrase: vi.fn(),
-        upsertSkill: vi.fn(),
-        queryNearestSkill: vi.fn(),
-      },
-      cvRefactor: { refactorCv: vi.fn() },
-    };
+    const semantic = semanticWithHits([
+      { id: topJobId, similarity: 0.6 },
+      { id: bottomJobId, similarity: 0.6 },
+    ]);
 
-    // No required skills extracted for this job -> falls back to the
-    // semantic/laya blend: (semanticSimilarity * (1 - layaWeight) +
-    // layaWeight * layaScore) * noRequiredSkillsPenalty
-    // = (0.6 * 0.7 + 0.3 * 0.9) * 0.75 = (0.42 + 0.27) * 0.75 = 0.5175
+    // No required skills extracted -> semantic/laya blend:
+    // (semanticSimilarity * (1 - layaWeight) + layaWeight * layaRank) * noRequiredSkillsPenalty.
+    // Laya's raw score (0.9 vs 0.85) is compressed into a narrow band, so
+    // only its rank within the shortlist is used: top = 1, bottom = 0.
+    // top:    (0.6 * 0.7 + 0.3 * 1) * 0.75 = 0.54
+    // bottom: (0.6 * 0.7 + 0.3 * 0) * 0.75 = 0.315
     const app = createApp(db, [], semantic, { topK: 10, minSimilarity: 0, layaWeight: 0.3 });
     const body = await (await app.request('/api/matches')).json();
-    const match = body.data[0].matches[0];
+    const byId = new Map<string, Record<string, unknown>>(
+      body.data[0].matches.map((m: { id: string }) => [m.id, m]),
+    );
+    const top = byId.get(topJobId)!;
+    const bottom = byId.get(bottomJobId)!;
 
-    expect(match.layaScore).toBe(0.9);
-    expect(match.layaChoice).toBe('strong');
-    expect(match.layaReasoning).toBe('Strong overlap on core backend responsibilities.');
-    expect(match.layaMismatchReasoning).toBe('No notable gaps identified.');
-    expect(match.layaTruncated).toBe(false);
-    expect(match.similarity).toBeCloseTo(0.5175);
+    // Displayed Laya fields still carry the raw evaluation.
+    expect(top.layaScore).toBe(0.9);
+    expect(top.layaChoice).toBe('strong');
+    expect(top.layaReasoning).toBe('Strong overlap on core backend responsibilities.');
+    expect(top.layaMismatchReasoning).toBe('No notable gaps identified.');
+    expect(top.layaTruncated).toBe(false);
+    expect(top.similarity).toBeCloseTo(0.54);
+    expect(bottom.similarity).toBeCloseTo(0.315);
+  });
+
+  it('does not let a Laya strong/moderate verdict rescue a below-threshold pair', async () => {
+    await runIngestion(db, [fakeAdapter([record()])]);
+    const jobs = await db.selectFrom('job_openings').select('id').execute();
+    const jobOpeningId = jobs[0].id;
+    await markJobSanitized(db, jobOpeningId, {
+      sanitizedJson: JSON.stringify({ title: 'Software Engineer' }),
+      anchorDocument: 'JOB TITLE: Software Engineer',
+      roleCategory: 'engineering',
+      seniorityLevel: null,
+    });
+
+    const designerId = await addSanitizedCandidate('Alexander Zakabluk', 'design');
+    const engineerId = await addSanitizedCandidate('Erik Engineer', 'engineering');
+    for (const candidateId of [designerId, engineerId]) {
+      await upsertLayaEvaluation(db, {
+        jobOpeningId,
+        candidateId,
+        score: 0.897,
+        choice: 'strong',
+        reasoning: 'Laya thinks this is a fit.',
+      });
+    }
+
+    const semantic = semanticWithHits([{ id: jobOpeningId, similarity: 0.15 }]);
+    const app = createApp(db, [], semantic, { topK: 10, minSimilarity: 0.65 });
+    const body = await (await app.request('/api/matches')).json();
+
+    const byCandidate = new Map<string, { matches: unknown[] } | undefined>(
+      body.data.map((entry: { candidateId: string }) => [entry.candidateId, entry]),
+    );
+    // Below-threshold score stays dropped whatever Laya's verdict or the categories.
+    expect(byCandidate.get(designerId)?.matches).toHaveLength(0);
+    expect(byCandidate.get(engineerId)?.matches).toHaveLength(0);
   });
 
   it('surfaces layaTruncated when the persisted Laya evaluation was truncated', async () => {

@@ -1,6 +1,12 @@
 import type { Kysely } from 'kysely';
 import type { JobDb } from '@job-fetcher/database';
-import { getCandidate, getJobEmbeddingStatus, upsertLayaEvaluation } from '@job-fetcher/database';
+import {
+  getCandidate,
+  getJobEmbeddingStatus,
+  getJobRoleCategories,
+  upsertLayaEvaluation,
+} from '@job-fetcher/database';
+import { areRoleCategoriesCompatible, type RoleCategory } from '@job-fetcher/domain';
 import {
   matchCandidatesForJob,
   matchJobsForCandidate,
@@ -16,6 +22,18 @@ import {
  * Laya being unreachable entirely) is logged and leaves that pair
  * unevaluated rather than failing the ingestion it's attached to.
  */
+/**
+ * Skips Laya for pairs whose role categories are both known and
+ * incompatible (e.g. `design` CV vs `engineering` job): such a pair is
+ * already heavily penalized by the role-mismatch multiplier, and Laya's
+ * verdict on it is uninformative (it rates almost everything strong or
+ * moderate) while still costing an inference call. Unknown categories are
+ * never skipped.
+ */
+function isRolePairCompatible(jobCategory: string | null, candidateCategory: string | null): boolean {
+  return areRoleCategoriesCompatible(jobCategory as RoleCategory | null, candidateCategory as RoleCategory | null);
+}
+
 async function evaluatePair(
   db: Kysely<JobDb>,
   layaClient: LayaClient,
@@ -52,9 +70,11 @@ export async function evaluateLayaForNewJob(
   topK: number,
 ): Promise<void> {
   const hits = await matchCandidatesForJob(pipeline, jobOpeningId, topK);
+  const jobCategory = (await getJobRoleCategories(db, [jobOpeningId])).get(jobOpeningId) ?? null;
   for (const hit of hits) {
     const candidate = await getCandidate(db, hit.id);
     if (!candidate?.anchor_document) continue;
+    if (!isRolePairCompatible(jobCategory, candidate.role_category)) continue;
     await evaluatePair(db, layaClient, jobOpeningId, jobAnchorDocument, hit.id, candidate.anchor_document);
   }
 }
@@ -68,9 +88,11 @@ export async function evaluateLayaForNewCandidate(
   topK: number,
 ): Promise<void> {
   const hits = await matchJobsForCandidate(pipeline, candidateId, topK);
+  const candidateCategory = (await getCandidate(db, candidateId))?.role_category ?? null;
   for (const hit of hits) {
     const jobEmbedding = await getJobEmbeddingStatus(db, hit.id);
     if (!jobEmbedding?.anchor_document) continue;
+    if (!isRolePairCompatible(jobEmbedding.role_category, candidateCategory)) continue;
     await evaluatePair(
       db,
       layaClient,

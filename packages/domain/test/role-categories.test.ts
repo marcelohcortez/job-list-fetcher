@@ -22,6 +22,13 @@ describe('categorizeRoleTitle', () => {
     expect(categorizeRoleTitle('Technical Product Manager, AI')).toBe('product-management');
   });
 
+  it('classifies product operations and solution/AI analyst titles', () => {
+    expect(categorizeRoleTitle('AI Product Operations Lead')).toBe('product-management');
+    expect(categorizeRoleTitle('AI Solution Analyst')).toBe('business-analysis');
+    expect(categorizeRoleTitle('Generative AI Analyst | Russian (Kazakhstan)')).toBe('business-analysis');
+    expect(areRoleCategoriesCompatible('design', categorizeRoleTitle('AI Solution Analyst'))).toBe(false);
+  });
+
   it('classifies design titles', () => {
     expect(categorizeRoleTitle('Product Designer')).toBe('design');
     expect(categorizeRoleTitle('UX Designer')).toBe('design');

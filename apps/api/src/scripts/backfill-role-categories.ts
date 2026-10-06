@@ -34,15 +34,18 @@ async function main() {
   const db = createKysely(sqlite);
   await runMigrations(db);
 
+  // Jobs whose sanitization failed have no sanitized title; fall back to the
+  // raw posting title so they still get a category instead of staying
+  // unknown (and so, compatible with everything).
   const jobs = await db
-    .selectFrom('job_embeddings')
-    .select(['job_opening_id', 'sanitized_json', 'role_category'])
-    .where('sanitized_json', 'is not', null)
+    .selectFrom('job_embeddings as e')
+    .innerJoin('job_openings as j', 'j.id', 'e.job_opening_id')
+    .select(['e.job_opening_id', 'e.sanitized_json', 'e.role_category', 'j.title as raw_title'])
     .execute();
 
   let jobsChanged = 0;
   for (const job of jobs) {
-    const title = parseTitle(job.sanitized_json);
+    const title = parseTitle(job.sanitized_json) ?? job.raw_title;
     if (!title) continue;
     const next = categorizeRoleTitle(title);
     if (next === job.role_category) continue;

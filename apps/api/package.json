@@ -11,6 +11,7 @@
     "backfill:cvs": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/backfill-cvs.ts",
     "backfill:cinode-descriptions": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/backfill-cinode-descriptions.ts",
     "backfill:laya": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/backfill-laya.ts",
+    "purge:laya-role-mismatch": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/purge-laya-role-mismatch.ts",
     "backfill:laya-mismatch": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/backfill-laya-mismatch.ts",
     "repair:skill-normalization": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/repair-skill-normalization.ts",
     "purge:stale-jobs": "node --env-file-if-exists=../../.env --env-file-if-exists=.env --import tsx src/scripts/purge-stale-jobs.ts",

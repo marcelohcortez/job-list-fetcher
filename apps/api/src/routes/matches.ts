@@ -301,6 +301,30 @@ function blendScore(
   };
 }
 
+/**
+ * Turns Laya's raw scores for one candidate into a within-shortlist
+ * percentile rank (0 = worst evaluated pair, 1 = best, ties share their
+ * average rank). Laya's absolute score is compressed into a narrow band
+ * (~0.82-0.90) regardless of verdict, so as an absolute term it adds a
+ * near-constant to every pair and cannot separate a good match from a bad
+ * one; the ordering within a candidate's shortlist is the only part of it
+ * that carries signal. With fewer than two evaluated pairs there is no
+ * ordering to rank, so those pairs get no Laya term (weight folds back).
+ */
+function layaRankScores(
+  evaluations: ReadonlyMap<string, { score: number }>,
+): Map<string, number> {
+  const ranks = new Map<string, number>();
+  if (evaluations.size < 2) return ranks;
+  const scores = [...evaluations.values()].map((evaluation) => evaluation.score);
+  for (const [jobId, { score }] of evaluations) {
+    const below = scores.filter((other) => other < score).length;
+    const tied = scores.filter((other) => other === score).length;
+    ranks.set(jobId, (below + (tied - 1) / 2) / (scores.length - 1));
+  }
+  return ranks;
+}
+
 async function matchesForCandidate(
   db: Kysely<JobDb>,
   pipeline: SemanticPipeline,
@@ -337,10 +361,12 @@ async function matchesForCandidate(
   const marks = await getUserMarks(db, jobIds);
   const sentCvs = await getSentCvIds(db, jobIds);
   const layaEvaluations = await getLayaEvaluationsForCandidate(db, candidateId, jobIds);
+  const layaRanks = layaRankScores(layaEvaluations);
 
   const jobs: JobWithSimilarity[] = [];
   for (const { hit, job, jobSkills } of entries) {
     const layaEvaluation = layaEvaluations.get(job.id) ?? null;
+    const jobRoleCategory = (jobRoleCategories.get(job.id) ?? null) as RoleCategory | null;
     const { score, baseScore, skillCoverage, matchedSkillCount, matchedSkills, missingSkills } = blendScore(
       hit.similarity,
       candidateSkillIds,
@@ -348,7 +374,7 @@ async function matchesForCandidate(
       config.skillOverlapWeight ?? DEFAULT_SKILL_OVERLAP_WEIGHT,
       skillRelations,
       {
-        job: (jobRoleCategories.get(job.id) ?? null) as RoleCategory | null,
+        job: jobRoleCategory,
         candidate: candidateRoleCategory,
         mismatchPenalty: config.roleMismatchPenalty ?? DEFAULT_ROLE_MISMATCH_PENALTY,
       },
@@ -359,18 +385,12 @@ async function matchesForCandidate(
       },
       config.noRequiredSkillsPenalty ?? DEFAULT_NO_REQUIRED_SKILLS_PENALTY,
       config.minSkillsForFullConfidence ?? DEFAULT_MIN_SKILLS_FOR_FULL_CONFIDENCE,
-      { score: layaEvaluation?.score ?? null, weight: config.layaWeight ?? DEFAULT_LAYA_WEIGHT },
+      { score: layaRanks.get(job.id) ?? null, weight: config.layaWeight ?? DEFAULT_LAYA_WEIGHT },
     );
-    // `minSimilarity` gates the blended skill/vector/Laya score, but a
-    // pair Laya itself called 'moderate' or 'strong' is let through
-    // regardless - Laya reads the full documents and can see transferable
-    // fit (e.g. version-suffixed or cross-provider skills) that the
-    // literal skill-coverage term can't credit, so the blended score
-    // shouldn't be able to veto Laya's own judgment. `score` (with Laya's
-    // term still folded in) is what's shown/sorted on either way - this
-    // only changes whether the pair is dropped, never the displayed value.
-    const layaOverride = layaEvaluation?.choice === 'strong' || layaEvaluation?.choice === 'moderate';
-    if (score < config.minSimilarity && !layaOverride) continue;
+    // `minSimilarity` gates the blended skill/vector/Laya score. Laya's
+    // verdict gets no veto: it rates nearly every pair strong/moderate, so
+    // letting it bypass the threshold surfaced 1-of-8-skill matches.
+    if (score < config.minSimilarity) continue;
     jobs.push(
       publicJob(
         job,
