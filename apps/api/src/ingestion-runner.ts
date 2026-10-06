@@ -129,7 +129,7 @@ export async function runIngestion(
 
     counts.fetched += records.length;
     for (const record of records) {
-      const eligibility = isJobEligible(record.deadline, record.status, now, record.publishedAt);
+      const eligibility = isJobEligible(record.deadline, record.status, now, record.sourcePublishedAt);
       if (!eligibility.isEligible) {
         counts.rejected += 1;
         continue;

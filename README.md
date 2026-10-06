@@ -19,8 +19,89 @@ Monorepo with npm workspaces:
 
 ## Requirements
 
-- Node.js 20+
+- Node.js 22+ (the Docker image uses 22)
 - npm 10+
+- [Docker](https://docs.docker.com/get-docker/) with Compose — runs Chroma (vector DB) and, optionally, Laya
+- [Ollama](https://ollama.com/download) installed natively on the host — runs the local AI models. Needs roughly 6 GB of free disk for the two default models plus enough RAM/VRAM for a 7B model (~8 GB+).
+
+## Full setup from a fresh clone
+
+The repo contains **no Docker images and no model files**. Everything below is built, pulled or downloaded on your machine:
+
+| What | Where it comes from | Stored |
+| --- | --- | --- |
+| `chromadb/chroma` image | pulled from Docker Hub on first `docker compose up` | Docker's image store |
+| `laya` image (optional) | built locally from [docker/laya.Dockerfile](docker/laya.Dockerfile) on first `docker compose up` | Docker's image store |
+| LLM + embedding models | `ollama pull` (step 2) | Ollama's own model dir (`~/.ollama`) |
+| Laya model checkpoints | downloaded from Hugging Face on the first evaluation request | `laya_models` Docker volume |
+| SQLite DB, Chroma vectors | created at runtime | `apps/api/data/` (gitignored) and the `chroma_data` Docker volume |
+
+"Mounting" is handled by [docker-compose.yml](docker-compose.yml): named volumes (`chroma_data`, `laya_models`, `app_data`) are created automatically — you don't mount anything by hand.
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/marcelohcortez/job-list-fetcher.git
+cd job-list-fetcher
+npm install
+cp .env.example .env   # every key is optional; the app runs keyless
+```
+
+### 2. Link your AI model (Ollama)
+
+Two models are needed: a **chat model** that turns CVs/job ads into structured data, and an **embedding model** that turns them into vectors.
+
+```bash
+brew install ollama            # macOS; Linux: curl -fsSL https://ollama.com/install.sh | sh
+ollama serve                   # or: brew services start ollama   (listens on :11434)
+ollama pull qwen2.5:7b         # default chat model
+ollama pull nomic-embed-text   # default embedding model
+```
+
+To use a different model, pull it and set it in `.env`:
+
+```bash
+OLLAMA_CHAT_MODEL=llama3.1:8b      # any Ollama chat model that can follow a JSON schema
+OLLAMA_EMBED_MODEL=nomic-embed-text
+OLLAMA_HOST=http://localhost:11434 # change if Ollama runs on another machine/port
+```
+
+Run Ollama natively, not in Docker — the containerized one has no GPU access and is ~15x slower. **Changing `OLLAMA_EMBED_MODEL` after data exists changes vector dimensions** — delete the Chroma volume (`docker compose down -v`) and re-ingest/re-upload afterwards. Only Ollama models are supported; a hosted API (OpenAI, Anthropic, ...) is not wired in.
+
+### 3. Start Chroma (and optionally Laya) in Docker
+
+```bash
+docker compose up -d chroma         # required for CV matching
+docker compose up -d laya           # optional extra scoring signal; first build takes a few minutes
+```
+
+If you start Laya, also set `LAYA_API_URL=http://localhost:8002` in `.env`; leave it unset to skip Laya. Check Chroma is up: `curl http://localhost:8000/api/v2/heartbeat`.
+
+### 4. Run the app
+
+```bash
+npm run dev    # terminal 1 — API on http://localhost:4000
+npm run web    # terminal 2 — frontend on http://localhost:4001
+```
+
+Open **http://localhost:4001**, press **Refresh** to ingest jobs, then use **Upload CV** and **Matches**.
+
+### Alternative: run everything in Docker
+
+Instead of step 4, build and start the API and frontend as containers too (Ollama still runs natively on the host):
+
+```bash
+docker compose up -d --build     # app (:4000), web (:4001), chroma (:8000), laya (:8002)
+```
+
+Open **http://localhost:4001**. The containers reach host Ollama at `http://host.docker.internal:11434` automatically on Docker Desktop (Mac/Windows); on Linux set `OLLAMA_HOST` in `.env` to the host's bridge/LAN IP. Containers get their config from `.env` via compose, so `OLLAMA_CHAT_MODEL` etc. apply here too. Stop a native `npm run dev` / `npm run web` first — they use the same ports 4000/4001.
+
+### Troubleshooting
+
+- **CV upload hangs or fails** — confirm `ollama list` shows both models and `curl http://localhost:11434` answers.
+- **`ECONNREFUSED` on port 8000** — Chroma isn't running (`docker compose ps`).
+- **Port 8000 or 4000 already in use** — stop the other process, or change the host port in `docker-compose.yml` / `PORT` in `.env` (and `server.proxy` in `apps/web/vite.config.ts`).
+- **Reset everything** — `docker compose down -v` and delete `apps/api/data/`.
 
 ## Getting started
 
@@ -190,7 +271,7 @@ The API boots keyless and can immediately ingest real listings from JobTech Dev 
 npm run docker:up
 ```
 
-Starts the API and Chroma, with the SQLite database and Chroma vectors each persisted in their own Docker volume. The API is on `http://localhost:4000`.
+Starts the API, the frontend dev server, Chroma and Laya, with the SQLite database, Chroma vectors and Laya model cache each persisted in their own Docker volume. The API is on `http://localhost:4000` and the frontend on `http://localhost:4001` (it proxies `/api` to the `app` service via `API_HOST`/`API_PORT`). Use `npm run docker:up -- --build` after changing code or dependencies — the code is baked into the image, not mounted. The image is `node:22` (Debian) with build tools, since `better-sqlite3` compiles a native addon.
 
 **Ollama is not in `docker-compose.yml`** — it runs natively on the host (see "Local semantic matching" below), because Docker Desktop can't pass the host GPU (Metal on Apple Silicon) through to a Linux container: a containerized `qwen2.5:7b` was measured at ~3.5 tokens/sec (CPU-only), against ~50+ tokens/sec for the same model natively — the difference between a CV upload sanitizing in minutes versus seconds. The `app` container reaches the host's native Ollama at `http://host.docker.internal:11434` by default (works out of the box on Docker Desktop for Mac/Windows; on Linux, set `OLLAMA_HOST` in `.env` to the host's bridge/LAN IP instead).
 
@@ -224,7 +305,7 @@ ollama pull qwen2.5:7b
 ollama pull nomic-embed-text
 ```
 
-`brew services start ollama` (or just running `ollama serve`) puts it on `http://localhost:11434`, which is the `OLLAMA_HOST` default — no `.env` change needed when running the API with `npm run dev`. Chroma still needs to run in Docker: `docker compose up chroma` starts just that service (use this alongside `npm run dev`/`npm run web`); `npm run docker:up` starts the API too, and reaches the host's native Ollama automatically (see "Docker local dev" above).
+`brew services start ollama` (or just running `ollama serve`) puts it on `http://localhost:11434`, which is the `OLLAMA_HOST` default — no `.env` change needed when running the API with `npm run dev`. Chroma still needs to run in Docker: `docker compose up chroma` starts just that service (use this alongside `npm run dev`/`npm run web`); `npm run docker:up` starts the API and frontend too, and reaches the host's native Ollama automatically (see "Docker local dev" above).
 
 Uploaded CVs and ingested job openings are both run through the same local pipeline (`packages/semantic-match`), so they end up as comparable vectors:
 

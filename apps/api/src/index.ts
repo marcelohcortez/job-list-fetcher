@@ -95,12 +95,16 @@ function main() {
     )
     .catch((err) => console.warn(`Startup migration/config load failed: ${(err as Error).message}`));
 
-  seedTargetRolePhrases(db, semantic.vectorStore, semantic.sanitizer.embed).catch(
-    (err) => console.warn(`Target role phrase seeding failed: ${(err as Error).message}`),
-  );
-  seedSkillRelations(db, semantic.vectorStore, semantic.sanitizer.embed).catch(
-    (err) => console.warn(`Skill relation seeding failed: ${(err as Error).message}`),
-  );
+  // Seeding needs the tables to exist, so on a fresh database it must wait for
+  // migrations to finish.
+  void migrationsDone.then(() => {
+    seedTargetRolePhrases(db, semantic.vectorStore, semantic.sanitizer.embed).catch((err) =>
+      console.warn(`Target role phrase seeding failed: ${(err as Error).message}`),
+    );
+    seedSkillRelations(db, semantic.vectorStore, semantic.sanitizer.embed).catch((err) =>
+      console.warn(`Skill relation seeding failed: ${(err as Error).message}`),
+    );
+  });
   const isTitleInScope = createTitleScopeChecker(
     db,
     semantic.vectorStore,

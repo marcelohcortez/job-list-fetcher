@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     port: 4001,
     proxy: {
-      '/api': `http://localhost:${process.env.API_PORT ?? 4000}`,
+      '/api': `http://${process.env.API_HOST ?? 'localhost'}:${process.env.API_PORT ?? 4000}`,
     },
   },
 });

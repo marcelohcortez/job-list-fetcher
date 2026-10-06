@@ -38,6 +38,18 @@ services:
       - chroma
       - laya
 
+  # Frontend dev server. Same image as `app`; proxies /api to the app service.
+  web:
+    build: .
+    command: ['npm', 'run', 'web', '--', '--host', '0.0.0.0']
+    ports:
+      - '4001:4001'
+    environment:
+      - API_HOST=app
+      - API_PORT=4000
+    depends_on:
+      - app
+
   chroma:
     image: chromadb/chroma
     ports:
