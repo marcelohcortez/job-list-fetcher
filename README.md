@@ -96,6 +96,22 @@ docker compose up -d --build     # app (:4000), web (:4001), chroma (:8000), lay
 
 Open **http://localhost:4001**. The containers reach host Ollama at `http://host.docker.internal:11434` automatically on Docker Desktop (Mac/Windows); on Linux set `OLLAMA_HOST` in `.env` to the host's bridge/LAN IP. Containers get their config from `.env` via compose, so `OLLAMA_CHAT_MODEL` etc. apply here too. Stop a native `npm run dev` / `npm run web` first — they use the same ports 4000/4001.
 
+### Optional: bulk-load resumes from text files
+
+Nothing is loaded from Devies (or anywhere else) automatically — a fresh install has no candidates until you upload PDFs in the UI. To load many CVs at once from plain-text files, use the one-off script [ingest-devies-resumes.ts](apps/api/src/scripts/ingest-devies-resumes.ts). It runs each file through the same pipeline as the upload tab (refactor, sanitize, embed, skill canonicalization), so Ollama and Chroma must be running.
+
+Put one `.txt` per person in a folder, plus a `manifest.json` listing them:
+
+```json
+[{ "file": "jane-doe.txt", "name": "Jane Doe", "userId": "u-123", "resumeId": "r-456" }]
+```
+
+```bash
+npm run ingest:devies-resumes --workspace @job-fetcher/api -- /path/to/folder
+```
+
+`userId` and `resumeId` are only recorded in the stored file name, so any strings work. The script writes to the local SQLite DB (`DATABASE_PATH`), so run it natively, not inside the containers. The Devies resume files themselves were pulled by hand through the internal Devies MCP server — there's no scripted export, and they aren't in this repo, so outside users should supply their own text files.
+
 ### Troubleshooting
 
 - **CV upload hangs or fails** — confirm `ollama list` shows both models and `curl http://localhost:11434` answers.
